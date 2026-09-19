@@ -5,6 +5,11 @@ import '../data/mca_students.dart';
 import '../services/api_service.dart';
 
 class ClassCRState extends ChangeNotifier {
+  // Default Passcode Constants (Fallback)
+  static const String codeCR = 'CR2026';
+  static const String codeAssistantCR = 'ACR2026';
+  static const String codeAdvisor = 'ADV2026';
+
   // Active Class Delegation & Passcodes
   ClassDelegation _delegation = const ClassDelegation(classId: 'I-MCA-A');
   ClassDelegation get delegation => _delegation;

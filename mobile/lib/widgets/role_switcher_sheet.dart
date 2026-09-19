@@ -26,16 +26,12 @@ class RoleSwitcherSheet extends StatelessWidget {
       return;
     }
 
-    String expectedCode = '';
     String roleLabel = '';
     if (role == UserRole.cr) {
-      expectedCode = ClassCRState.codeCR;
       roleLabel = 'Class Representative (CR)';
     } else if (role == UserRole.assistantCr) {
-      expectedCode = ClassCRState.codeAssistantCR;
       roleLabel = isFemale == true ? 'Female Assistant CR (Girls Section)' : 'Male Assistant CR (Boys Section)';
     } else if (role == UserRole.advisor) {
-      expectedCode = ClassCRState.codeAdvisor;
       roleLabel = 'Class Advisor';
     }
 
@@ -100,9 +96,17 @@ class RoleSwitcherSheet extends StatelessWidget {
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   final entered = controller.text.trim().toUpperCase();
-                  if (entered == expectedCode) {
+                  final gender = isFemale != null ? (isFemale ? 'F' : 'M') : null;
+                  final res = await state.verifyRolePasscode(
+                    classId: 'I-MCA-A',
+                    role: role,
+                    code: entered,
+                    gender: gender,
+                  );
+
+                  if (res['valid'] == true) {
                     Navigator.pop(dialogCtx); // Close dialog
                     Navigator.pop(context);   // Close bottom sheet
                     if (role == UserRole.assistantCr && isFemale != null) {
@@ -112,7 +116,7 @@ class RoleSwitcherSheet extends StatelessWidget {
                     }
                   } else {
                     setDialogState(() {
-                      error = 'Invalid passcode for $roleLabel!';
+                      error = res['error']?.toString() ?? 'Invalid passcode for $roleLabel!';
                     });
                   }
                 },
