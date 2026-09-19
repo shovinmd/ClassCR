@@ -1,0 +1,592 @@
+import 'package:flutter/material.dart';
+import '../../core/theme.dart';
+import '../../models/models.dart';
+import '../../providers/classcr_state.dart';
+import '../main_shell.dart';
+
+class SetupScreen extends StatefulWidget {
+  final ClassCRState state;
+
+  const SetupScreen({super.key, required this.state});
+
+  @override
+  State<SetupScreen> createState() => _SetupScreenState();
+}
+
+class _SetupScreenState extends State<SetupScreen> {
+  // Step 1: Class Selection
+  String _selectedDept = 'MCA';
+  String _selectedClass = 'I MCA';
+  String _selectedSection = 'Section A';
+
+  // Step 2: Role Selection
+  UserRole _selectedRole = UserRole.cr;
+
+  // Step 3: Student / Advisor Selection
+  Student? _selectedStudent;
+  final TextEditingController _advisorNameController = TextEditingController(text: 'Dr. K. Senthil Nathan');
+  final TextEditingController _searchStudentController = TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
+
+  String _errorMessage = '';
+  bool _isVerifying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Preselect default CR student: MUTHUVEL R (Roll 31)
+    try {
+      _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == 31);
+    } catch (_) {
+      _selectedStudent = widget.state.students.first;
+    }
+  }
+
+  @override
+  void dispose() {
+    _advisorNameController.dispose();
+    _searchStudentController.dispose();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  String get expectedCode {
+    switch (_selectedRole) {
+      case UserRole.cr:
+        return ClassCRState.codeCR;
+      case UserRole.assistantCr:
+        return ClassCRState.codeAssistantCR;
+      case UserRole.advisor:
+        return ClassCRState.codeAdvisor;
+      default:
+        return '123456';
+    }
+  }
+
+  void _verifyAndProceed() async {
+    setState(() {
+      _errorMessage = '';
+      _isVerifying = true;
+    });
+
+    final enteredCode = _codeController.text.trim().toUpperCase();
+
+    if (enteredCode != expectedCode) {
+      setState(() {
+        _errorMessage = 'Invalid verification code for ${_getRoleTitle(_selectedRole)}. Expected: $expectedCode';
+        _isVerifying = false;
+      });
+      return;
+    }
+
+    String userName = '';
+    String? studentId;
+
+    if (_selectedRole == UserRole.advisor) {
+      userName = _advisorNameController.text.trim();
+      if (userName.isEmpty) userName = 'Class Advisor';
+    } else {
+      if (_selectedStudent == null) {
+        setState(() {
+          _errorMessage = 'Please select a student from the class roster';
+          _isVerifying = false;
+        });
+        return;
+      }
+      userName = '${_selectedStudent!.name} (${_selectedRole == UserRole.cr ? "CR" : "Asst. CR"})';
+      studentId = _selectedStudent!.enrollmentNo;
+    }
+
+    final classId = '$_selectedClass-$_selectedSection';
+
+    await widget.state.completeSetup(
+      role: _selectedRole,
+      name: userName,
+      classId: classId,
+      studentId: studentId,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.presentGreen,
+          content: Text('Verified as ${_getRoleTitle(_selectedRole)}! Welcome $userName.'),
+        ),
+      );
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => MainShell(state: widget.state)),
+      );
+    }
+  }
+
+  String _getRoleTitle(UserRole role) {
+    switch (role) {
+      case UserRole.cr:
+        return 'Class Representative (CR)';
+      case UserRole.assistantCr:
+        return 'Assistant CR (Asst. CR)';
+      case UserRole.advisor:
+        return 'Class Advisor';
+      default:
+        return role.name.toUpperCase();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final students = widget.state.students;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFD),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with logo
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Welcome to ClassCR',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.deepBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Set up your class & role to get started',
+                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // STEP 1: CLASS & SECTION SELECTION
+              _buildSectionHeader('1', 'Select Class & Section'),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Column(
+                  children: [
+                    _buildDropdown(
+                      label: 'Department',
+                      value: _selectedDept,
+                      items: ['MCA', 'BCA', 'B.Sc CS', 'Other Departments'],
+                      onChanged: (val) => setState(() => _selectedDept = val!),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildDropdown(
+                      label: 'Class / Year',
+                      value: _selectedClass,
+                      items: ['I MCA', 'II MCA'],
+                      onChanged: (val) => setState(() => _selectedClass = val!),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildDropdown(
+                      label: 'Section',
+                      value: _selectedSection,
+                      items: ['Section A', 'Section B'],
+                      onChanged: (val) => setState(() => _selectedSection = val!),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // STEP 2: ROLE SELECTION (CR, Asst. CR, Class Advisor)
+              _buildSectionHeader('2', 'Select Your Role'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _buildRoleCard(
+                    role: UserRole.cr,
+                    title: 'CR',
+                    subtitle: 'Class Rep',
+                    icon: Icons.badge_outlined,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildRoleCard(
+                    role: UserRole.assistantCr,
+                    title: 'Asst. CR',
+                    subtitle: 'Equal Access',
+                    icon: Icons.assignment_ind_outlined,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildRoleCard(
+                    role: UserRole.advisor,
+                    title: 'Advisor',
+                    subtitle: 'Staff Portal',
+                    icon: Icons.psychology_alt_outlined,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // STEP 3: IDENTIFY PERSON IN CLASS
+              _buildSectionHeader('3', _selectedRole == UserRole.advisor ? 'Advisor Details' : 'Verify Student from Roster'),
+              const SizedBox(height: 10),
+
+              if (_selectedRole == UserRole.advisor) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: TextField(
+                    controller: _advisorNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Advisor Full Name',
+                      prefixIcon: Icon(Icons.person, color: AppColors.primary),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Student Picker from 52 students list
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Select student from I MCA (52 students):',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<Student>(
+                            isExpanded: true,
+                            value: _selectedStudent,
+                            items: students.map((st) {
+                              return DropdownMenuItem(
+                                value: st,
+                                child: Text(
+                                  '#${st.rollNo.toString().padLeft(2, '0')} ${st.name} (${st.enrollmentNo})',
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (st) => setState(() => _selectedStudent = st),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_selectedStudent != null)
+                        Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: AppColors.presentGreen, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Verified in I MCA Batch 2026–28 roster',
+                              style: const TextStyle(fontSize: 12, color: AppColors.presentGreen, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+
+              // STEP 4: OFFLINE VERIFICATION CODE
+              _buildSectionHeader('4', 'Enter Offline Verification Code'),
+              const SizedBox(height: 10),
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _codeController,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        labelText: 'Passcode for ${_getRoleTitle(_selectedRole)}',
+                        hintText: expectedCode,
+                        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.auto_fix_high, color: AppColors.primary),
+                          tooltip: 'Autofill Code',
+                          onPressed: () => setState(() => _codeController.text = expectedCode),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Quick Tap Chip for convenience
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        const Text(
+                          'Offline demo codes:',
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _codeController.text = expectedCode),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              expectedCode,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if (_errorMessage.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline, color: AppColors.absentRed, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _errorMessage,
+                                style: const TextStyle(fontSize: 12, color: AppColors.absentRed, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // SUBMIT & ENTER APP BUTTON (Thumb-friendly mobile button)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isVerifying ? null : _verifyAndProceed,
+                  icon: _isVerifying
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.arrow_forward),
+                  label: Text(
+                    _isVerifying ? 'Verifying...' : 'Verify & Launch ClassCR',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String step, String title) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: AppColors.primary,
+          child: Text(
+            step,
+            style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoleCard({
+    required UserRole role,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final isSelected = _selectedRole == role;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedRole = role;
+            _codeController.text = expectedCode;
+            _errorMessage = '';
+            // Auto-select Shovin Michel David (Roll 45) for Assistant CR, or Muthuvel (Roll 31) for CR
+            if (role == UserRole.assistantCr) {
+              try {
+                _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == 45);
+              } catch (_) {}
+            } else if (role == UserRole.cr) {
+              try {
+                _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == 31);
+              } catch (_) {}
+            }
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.cardBorder,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: isSelected ? Colors.white : AppColors.primary, size: 24),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isSelected ? Colors.white70 : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 90,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: items.contains(value) ? value : items.first,
+                isExpanded: true,
+                items: items
+                    .map((item) => DropdownMenuItem(value: item, child: Text(item, style: const TextStyle(fontSize: 13))))
+                    .toList(),
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
