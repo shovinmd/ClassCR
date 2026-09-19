@@ -4,10 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class ApiService {
-  // Set your Vercel deployment URL here once deployed (e.g. 'https://classcr-server.vercel.app/api')
-  static String vercelProductionUrl = '';
+  // Live Vercel production endpoint
+  static String vercelProductionUrl = 'https://server-eta-dun-48.vercel.app/api';
 
-  static String _activeBaseUrl = 'http://localhost:5000/api';
+  static String _activeBaseUrl = 'https://server-eta-dun-48.vercel.app/api';
 
   static String get baseUrl => _activeBaseUrl;
 
