@@ -79,6 +79,8 @@ class ClassCRState extends ChangeNotifier {
       if (roleStr == 'student') role = UserRole.student;
       if (roleStr == 'admin') role = UserRole.admin;
 
+      final gender = prefs.getString('classcr_user_gender');
+
       _currentUser = AppUser(
         id: 'user_${role.name}',
         name: name,
@@ -87,6 +89,7 @@ class ClassCRState extends ChangeNotifier {
         classId: classId,
         studentId: studentId,
         department: 'MCA',
+        gender: gender,
       );
     }
 
@@ -117,6 +120,7 @@ class ClassCRState extends ChangeNotifier {
     required String name,
     required String classId,
     String? studentId,
+    String? gender,
   }) async {
     _currentUser = AppUser(
       id: 'user_${role.name}',
@@ -126,6 +130,7 @@ class ClassCRState extends ChangeNotifier {
       classId: classId,
       studentId: studentId,
       department: 'MCA',
+      gender: gender,
     );
     _isSetupDone = true;
 
@@ -136,6 +141,9 @@ class ClassCRState extends ChangeNotifier {
     await prefs.setString('classcr_class_id', classId);
     if (studentId != null) {
       await prefs.setString('classcr_student_id', studentId);
+    }
+    if (gender != null) {
+      await prefs.setString('classcr_user_gender', gender);
     }
 
     notifyListeners();
@@ -150,6 +158,20 @@ class ClassCRState extends ChangeNotifier {
     await prefs.remove('classcr_user_name');
     await prefs.remove('classcr_class_id');
     await prefs.remove('classcr_student_id');
+    await prefs.remove('classcr_user_gender');
+    notifyListeners();
+  }
+
+  // Quick Section Mark Actions (for Male/Female Cross-Checking)
+  void markSectionPresent({required bool isFemale}) {
+    final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
+    _absentRolls.removeAll(rolls);
+    notifyListeners();
+  }
+
+  void markSectionAbsent({required bool isFemale}) {
+    final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
+    _absentRolls.addAll(rolls);
     notifyListeners();
   }
 
@@ -293,6 +315,7 @@ class ClassCRState extends ChangeNotifier {
           classId: 'I-MCA-A',
           studentId: '260274',
           department: 'MCA',
+          gender: 'M',
         );
         break;
       case UserRole.advisor:
@@ -325,6 +348,34 @@ class ClassCRState extends ChangeNotifier {
           department: 'All Departments',
         );
         break;
+    }
+    notifyListeners();
+  }
+
+  // Switch specifically to Male or Female Assistant CR
+  void switchAssistantCrRole({required bool isFemale}) {
+    if (isFemale) {
+      _currentUser = const AppUser(
+        id: 'user_acr_f',
+        name: 'DHIVYALAKSHMI H (Asst. CR)',
+        email: 'asstcr.female@classcr.edu',
+        role: UserRole.assistantCr,
+        classId: 'I-MCA-A',
+        studentId: '260311',
+        department: 'MCA',
+        gender: 'F',
+      );
+    } else {
+      _currentUser = const AppUser(
+        id: 'user_acr_m',
+        name: 'SHOVIN MICHEL DAVID (Asst. CR)',
+        email: 'asstcr.male@classcr.edu',
+        role: UserRole.assistantCr,
+        classId: 'I-MCA-A',
+        studentId: '260274',
+        department: 'MCA',
+        gender: 'M',
+      );
     }
     notifyListeners();
   }

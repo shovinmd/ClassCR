@@ -14,6 +14,7 @@ class AppUser {
   final String? classId;
   final String? studentId;
   final String? department;
+  final String? gender; // 'M' or 'F'
 
   const AppUser({
     required this.id,
@@ -23,6 +24,7 @@ class AppUser {
     this.classId,
     this.studentId,
     this.department,
+    this.gender,
   });
 
   String get roleDisplayName {
@@ -30,7 +32,8 @@ class AppUser {
       case UserRole.cr:
         return 'Class Representative (CR)';
       case UserRole.assistantCr:
-        return 'Assistant CR (Asst. CR)';
+        final prefix = gender == 'F' ? 'Female ' : (gender == 'M' ? 'Male ' : '');
+        return '${prefix}Assistant CR (Asst. CR)';
       case UserRole.advisor:
         return 'Class Advisor';
       case UserRole.student:
@@ -41,6 +44,8 @@ class AppUser {
   }
 
   bool get canMarkAttendance => role == UserRole.cr || role == UserRole.assistantCr;
+  bool get isFemale => gender == 'F';
+  bool get isMale => gender == 'M';
 }
 
 class Student {
@@ -48,6 +53,7 @@ class Student {
   final String enrollmentNo;
   final String name;
   final String? dob;
+  final String gender; // 'M' or 'F'
   final String classId;
   final String department;
 
@@ -56,16 +62,28 @@ class Student {
     required this.enrollmentNo,
     required this.name,
     this.dob,
+    this.gender = 'M',
     this.classId = 'I-MCA-A',
     this.department = 'MCA',
   });
 
+  bool get isFemale => gender == 'F';
+  bool get isMale => gender != 'F';
+
+  static const Set<int> femaleRollNumbers = {
+    3, 5, 6, 9, 11, 12, 13, 15, 19, 20, 21, 23, 29, 32, 33, 35, 38, 42, 44, 47, 48, 50, 51, 52
+  };
+
   factory Student.fromJson(Map<String, dynamic> json) {
+    final roll = json['rollNo'] is int ? json['rollNo'] : int.tryParse(json['rollNo']?.toString() ?? '0') ?? 0;
+    final inferredGender = json['gender']?.toString() ?? (femaleRollNumbers.contains(roll) ? 'F' : 'M');
+
     return Student(
-      rollNo: json['rollNo'] is int ? json['rollNo'] : int.parse(json['rollNo'].toString()),
+      rollNo: roll,
       enrollmentNo: json['enrollmentNo'].toString(),
       name: json['name'].toString(),
       dob: json['dob']?.toString(),
+      gender: inferredGender,
       classId: json['classId']?.toString() ?? 'I-MCA-A',
       department: json['department']?.toString() ?? 'MCA',
     );
@@ -76,6 +94,7 @@ class Student {
     'enrollmentNo': enrollmentNo,
     'name': name,
     'dob': dob,
+    'gender': gender,
     'classId': classId,
     'department': department,
   };

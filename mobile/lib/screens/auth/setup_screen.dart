@@ -98,12 +98,14 @@ class _SetupScreenState extends State<SetupScreen> {
     }
 
     final classId = '$_selectedClass-$_selectedSection';
+    final studentGender = _selectedStudent != null ? (_selectedStudent!.isFemale ? 'F' : 'M') : 'M';
 
     await widget.state.completeSetup(
       role: _selectedRole,
       name: userName,
       classId: classId,
       studentId: studentId,
+      gender: studentGender,
     );
 
     if (mounted) {
@@ -317,17 +319,53 @@ class _SetupScreenState extends State<SetupScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      if (_selectedStudent != null)
+                      if (_selectedStudent != null) ...[
                         Row(
                           children: [
                             const Icon(Icons.check_circle, color: AppColors.presentGreen, size: 16),
                             const SizedBox(width: 6),
                             Text(
-                              'Verified in I MCA Batch 2026–28 roster',
+                              'Verified in I MCA Batch 2026–28 roster (${_selectedStudent!.isFemale ? "Girl" : "Boy"})',
                               style: const TextStyle(fontSize: 12, color: AppColors.presentGreen, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
+                        if (_selectedRole == UserRole.assistantCr) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _selectedStudent!.isFemale ? const Color(0xFFFDF2F8) : const Color(0xFFF0F9FF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _selectedStudent!.isFemale ? const Color(0xFFF472B6) : const Color(0xFF38BDF8),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _selectedStudent!.isFemale ? Icons.female : Icons.male,
+                                  color: _selectedStudent!.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _selectedStudent!.isFemale
+                                        ? 'Assigned: Female Assistant CR (Girls Section Coordinator)'
+                                        : 'Assigned: Male Assistant CR (Boys Section Coordinator)',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: _selectedStudent!.isFemale ? const Color(0xFFBE185D) : const Color(0xFF0369A1),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ],
                   ),
                 ),
@@ -336,7 +374,7 @@ class _SetupScreenState extends State<SetupScreen> {
               const SizedBox(height: 20),
 
               // STEP 4: OFFLINE VERIFICATION CODE
-              _buildSectionHeader('4', 'Enter Offline Verification Code'),
+              _buildSectionHeader('4', 'Enter Official Passcode'),
               const SizedBox(height: 10),
 
               Container(
@@ -352,45 +390,22 @@ class _SetupScreenState extends State<SetupScreen> {
                     TextField(
                       controller: _codeController,
                       textCapitalization: TextCapitalization.characters,
+                      obscureText: true,
                       decoration: InputDecoration(
                         labelText: 'Passcode for ${_getRoleTitle(_selectedRole)}',
-                        hintText: expectedCode,
+                        hintText: 'Enter college registration passcode',
                         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
                         border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.auto_fix_high, color: AppColors.primary),
-                          tooltip: 'Autofill Code',
-                          onPressed: () => setState(() => _codeController.text = expectedCode),
-                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
-
-                    // Quick Tap Chip for convenience
-                    Wrap(
-                      spacing: 8,
+                    Row(
                       children: [
-                        const Text(
-                          'Offline demo codes:',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                        GestureDetector(
-                          onTap: () => setState(() => _codeController.text = expectedCode),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              expectedCode,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
+                        const Icon(Icons.security, size: 14, color: AppColors.textSecondary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Authorized code required to activate ${_getRoleTitle(_selectedRole)}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                         ),
                       ],
                     ),

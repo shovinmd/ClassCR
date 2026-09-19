@@ -17,12 +17,34 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _filter = 'all'; // 'all', 'present', 'absent'
+  String _sectionTab = 'all'; // 'all', 'boys', 'girls'
+
+  @override
+  void initState() {
+    super.initState();
+    // For Assistant CR: Auto-select and prioritize their assigned section!
+    if (widget.state.currentRole == UserRole.assistantCr) {
+      if (widget.state.currentUser.gender == 'F') {
+        _sectionTab = 'girls';
+      } else if (widget.state.currentUser.gender == 'M') {
+        _sectionTab = 'boys';
+      }
+    }
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
+
+  int get totalBoys => widget.state.students.where((s) => s.isMale).length;
+  int get presentBoys => widget.state.students.where((s) => s.isMale && widget.state.isPresent(s.rollNo)).length;
+  int get absentBoys => totalBoys - presentBoys;
+
+  int get totalGirls => widget.state.students.where((s) => s.isFemale).length;
+  int get presentGirls => widget.state.students.where((s) => s.isFemale && widget.state.isPresent(s.rollNo)).length;
+  int get absentGirls => totalGirls - presentGirls;
 
   List<Student> get filteredStudents {
     return widget.state.students.where((st) {
@@ -33,11 +55,17 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
 
       if (!matchesSearch) return false;
 
+      // Status filter
       if (_filter == 'present') {
-        return widget.state.isPresent(st.rollNo);
+        if (!widget.state.isPresent(st.rollNo)) return false;
       } else if (_filter == 'absent') {
-        return widget.state.isAbsent(st.rollNo);
+        if (!widget.state.isAbsent(st.rollNo)) return false;
       }
+
+      // Section / Gender filter
+      if (_sectionTab == 'boys' && !st.isMale) return false;
+      if (_sectionTab == 'girls' && !st.isFemale) return false;
+
       return true;
     }).toList();
   }
@@ -347,6 +375,116 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: Column(
                   children: [
+                    // Assistant CR Role Notice (Cross-Checking Section Banner)
+                    if (widget.state.currentRole == UserRole.assistantCr) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDFA),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF5EEAD4)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              widget.state.currentUser.gender == 'F' ? Icons.female : Icons.male,
+                              size: 20,
+                              color: widget.state.currentUser.gender == 'F' ? const Color(0xFFDB2777) : const Color(0xFF0D9488),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${widget.state.currentUser.roleDisplayName}: ${widget.state.currentUser.name}\n'
+                                'Cross-Checking Section: ${_sectionTab == "girls" ? "👧 Girls Roster" : (_sectionTab == "boys" ? "👦 Boys Roster" : "👥 All Students")}',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F766E), height: 1.3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Section Selector Tabs (All / Boys / Girls)
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildSectionTab('All (${widget.state.totalCount})', 'all', Icons.groups_outlined),
+                          _buildSectionTab('Boys ($totalBoys)', 'boys', Icons.male, activeColor: const Color(0xFF0284C7)),
+                          _buildSectionTab('Girls ($totalGirls)', 'girls', Icons.female, activeColor: const Color(0xFFDB2777)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Section Quick Batch & Status Strip (when on Boys or Girls section)
+                    if (_sectionTab == 'boys') ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0F2FE),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFBAE6FD)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.male, size: 16, color: Color(0xFF0284C7)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Boys: $presentBoys Present • $absentBoys Absent',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0369A1)),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () => widget.state.markSectionPresent(isFemale: false),
+                              child: const Text('Mark All Present', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen)),
+                            ),
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: () => widget.state.markSectionAbsent(isFemale: false),
+                              child: const Text('Mark All Absent', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.absentRed)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (_sectionTab == 'girls') ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFCE7F3),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFBCFE8)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.female, size: 16, color: Color(0xFFDB2777)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Girls: $presentGirls Present • $absentGirls Absent',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFBE185D)),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () => widget.state.markSectionPresent(isFemale: true),
+                              child: const Text('Mark All Present', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen)),
+                            ),
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: () => widget.state.markSectionAbsent(isFemale: true),
+                              child: const Text('Mark All Absent', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.absentRed)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     // Search box
                     TextField(
                       controller: _searchController,
@@ -378,11 +516,11 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                     // Filter chips
                     Row(
                       children: [
-                        _buildFilterChip('All (${widget.state.totalCount})', 'all'),
+                        _buildFilterChip('All', 'all'),
                         const SizedBox(width: 8),
-                        _buildFilterChip('Present (${widget.state.presentCount})', 'present', AppColors.presentGreen),
+                        _buildFilterChip('Present', 'present', AppColors.presentGreen),
                         const SizedBox(width: 8),
-                        _buildFilterChip('Absent (${widget.state.absentCount})', 'absent', AppColors.absentRed),
+                        _buildFilterChip('Absent', 'absent', AppColors.absentRed),
                       ],
                     ),
                   ],
@@ -503,13 +641,33 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 2),
-                                          Text(
-                                            student.enrollmentNo,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.textSecondary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                student.enrollmentNo,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppColors.textSecondary,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: student.isFemale ? const Color(0xFFFCE7F3) : const Color(0xFFE0F2FE),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  student.isFemale ? '👧 Girl' : '👦 Boy',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: student.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -638,6 +796,48 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
             fontSize: 12,
             fontWeight: FontWeight.bold,
             color: isSelected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTab(String label, String value, IconData icon, {Color? activeColor}) {
+    final isSelected = _sectionTab == value;
+    final color = activeColor ?? AppColors.primary;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _sectionTab = value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: isSelected ? color : AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: isSelected ? color : AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
         ),
       ),

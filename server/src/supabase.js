@@ -31,14 +31,18 @@ const supabase = createClient(supabaseUrl, activeKey, {
   }
 });
 
+const femaleRolls = new Set([3, 5, 6, 9, 11, 12, 13, 15, 19, 20, 21, 23, 29, 32, 33, 35, 38, 42, 44, 47, 48, 50, 51, 52]);
+
 // Helper to map DB student row (snake_case) to client student (camelCase)
 function mapStudent(row) {
   if (!row) return null;
+  const roll = row.roll_no !== undefined ? row.roll_no : row.rollNo;
   return {
-    rollNo: row.roll_no !== undefined ? row.roll_no : row.rollNo,
+    rollNo: roll,
     enrollmentNo: row.enrollment_no !== undefined ? row.enrollment_no : row.enrollmentNo,
     name: row.name,
     dob: row.dob,
+    gender: row.gender || (femaleRolls.has(roll) ? 'F' : 'M'),
     classId: row.class_id !== undefined ? row.class_id : (row.classId || 'I-MCA-A'),
     department: row.department || 'MCA'
   };
