@@ -392,11 +392,190 @@ const db = {
 
     const seedUsers = [
       { id: 'user_cr_1', name: 'MUTHUVEL R (CR)', email: 'cr@classcr.edu', password: 'password123', role: 'cr', collegeId: 'COL-001', departmentId: 'MCA', classId: 'I-MCA-A', studentId: '260320' },
-      { id: 'user_adv_1', name: 'Dr. K. Senthil Nathan', email: 'advisor@classcr.edu', password: 'password123', role: 'advisor', collegeId: 'COL-001', departmentId: 'MCA', classId: 'I-MCA-A' },
+      { id: 'user_adv_1', name: 'Prof. Nandhini G (Navi Ma\'am)', email: 'advisor@classcr.edu', password: 'password123', role: 'advisor', collegeId: 'COL-001', departmentId: 'MCA', classId: 'I-MCA-A' },
       { id: 'user_stu_1', name: 'DHIVYALAKSHMI H', email: 'student@classcr.edu', password: 'password123', role: 'student', collegeId: 'COL-001', departmentId: 'MCA', classId: 'I-MCA-A', studentId: '260311' },
       { id: 'user_adm_1', name: 'College Dean / Administrator', email: 'admin@classcr.edu', password: 'password123', role: 'admin', collegeId: 'COL-001' }
     ];
     return seedUsers.find(u => u.email === email) || null;
+  },
+
+  // Official MCA Department Faculty List (Manakula Vinayagar Institute of Technology)
+  facultyList: [
+    { name: 'Mrs. V. Nandhini, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Class Advisor', hallNo: '408' },
+    { name: 'Ms. M. Tamilmani, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Fundamentals of Computer Programming (FCP)', code: '25PMCY01', hours: 15 },
+    { name: 'Ms. V. Deepa, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Introduction to Problem Solving (IPS)', code: '25PMCY02', hours: 15 },
+    { name: 'Ms. M. Shakira Banu, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Introduction to Computer Organization (ICO)', code: '25PMCY03', hours: 15 },
+    { name: 'Ms. S. Sharleen Banou, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Fundamentals of Web Applications (FWA)', code: '25PMCY04', hours: 15 }
+  ],
+
+  async getFaculty(department = 'MCA') {
+    return this.facultyList.filter(f => !department || f.department === department);
+  },
+
+  // Delegation Store & Role Passcodes
+  delegations: {
+    'I-MCA-A': {
+      classId: 'I-MCA-A',
+      advisorName: 'Mrs. V. Nandhini, AP/CA',
+      advisorCode: 'NAVI2026',
+      crRoll: 31,
+      crName: 'MUTHUVEL R',
+      crCode: 'CR2026',
+      maleAsstRoll: 45,
+      maleAsstName: 'SHOVIN MICHEL DAVID',
+      maleAsstCode: 'ACR2026',
+      femaleAsstRoll: 13,
+      femaleAsstName: 'DHIVYALAKSHMI H',
+      femaleAsstCode: 'ACR2026',
+      studentCode: 'STU2026'
+    }
+  },
+
+  async getDelegation(classId = 'I-MCA-A') {
+    if (!this.delegations[classId]) {
+      this.delegations[classId] = {
+        classId,
+        advisorName: 'Mrs. V. Nandhini, AP/CA',
+        advisorCode: 'NAVI2026',
+        crRoll: 31,
+        crName: 'MUTHUVEL R',
+        crCode: 'CR2026',
+        maleAsstRoll: 45,
+        maleAsstName: 'SHOVIN MICHEL DAVID',
+        maleAsstCode: 'ACR2026',
+        femaleAsstRoll: 13,
+        femaleAsstName: 'DHIVYALAKSHMI H',
+        femaleAsstCode: 'ACR2026',
+        studentCode: 'STU2026'
+      };
+    }
+    return this.delegations[classId];
+  },
+
+  async adminAssignAdvisor({ classId = 'I-MCA-A', advisorName, advisorCode }) {
+    const cur = await this.getDelegation(classId);
+    if (advisorName) cur.advisorName = advisorName;
+    if (advisorCode) cur.advisorCode = advisorCode.toUpperCase();
+    this.delegations[classId] = cur;
+
+    // Persist to Supabase classes table
+    try {
+      await supabase.from('classes').update({ advisor_name: cur.advisorName }).eq('id', classId);
+    } catch (_) {}
+
+    return cur;
+  },
+
+  async advisorDelegate({
+    classId = 'I-MCA-A',
+    crRoll,
+    crName,
+    crCode,
+    maleAsstRoll,
+    maleAsstName,
+    maleAsstCode,
+    femaleAsstRoll,
+    femaleAsstName,
+    femaleAsstCode,
+    studentCode
+  }) {
+    const cur = await this.getDelegation(classId);
+    if (crRoll) cur.crRoll = crRoll;
+    if (crName) cur.crName = crName;
+    if (crCode) cur.crCode = crCode.toUpperCase();
+    if (maleAsstRoll) cur.maleAsstRoll = maleAsstRoll;
+    if (maleAsstName) cur.maleAsstName = maleAsstName;
+    if (maleAsstCode) cur.maleAsstCode = maleAsstCode.toUpperCase();
+    if (femaleAsstRoll) cur.femaleAsstRoll = femaleAsstRoll;
+    if (femaleAsstName) cur.femaleAsstName = femaleAsstName;
+    if (femaleAsstCode) cur.femaleAsstCode = femaleAsstCode.toUpperCase();
+    if (studentCode) cur.studentCode = studentCode.toUpperCase();
+
+    this.delegations[classId] = cur;
+
+    // Persist CR to classes table
+    try {
+      if (cur.crName) {
+        await supabase.from('classes').update({ cr_name: cur.crName }).eq('id', classId);
+      }
+    } catch (_) {}
+
+    return cur;
+  },
+
+  async verifyPasscode({ classId = 'I-MCA-A', role, code, gender }) {
+    const del = await this.getDelegation(classId);
+    const entered = (code || '').trim().toUpperCase();
+
+    if (role === 'admin') {
+      const match = entered === 'ADMIN2026' || entered === 'ADM2026';
+      if (match) {
+        return {
+          valid: true,
+          name: 'College Dean / Administrator',
+          role: 'admin',
+          classId
+        };
+      }
+    } else if (role === 'advisor') {
+      const match = entered === del.advisorCode || entered === 'ADV2026' || entered === 'NAVI2026';
+      if (match) {
+        return {
+          valid: true,
+          name: del.advisorName,
+          role: 'advisor',
+          classId
+        };
+      }
+    } else if (role === 'cr') {
+      const match = entered === del.crCode || entered === 'CR2026';
+      if (match) {
+        return {
+          valid: true,
+          name: del.crName,
+          role: 'cr',
+          classId,
+          rollNo: del.crRoll,
+          gender: 'M'
+        };
+      }
+    } else if (role === 'assistantCr') {
+      const matchMale = entered === del.maleAsstCode || entered === 'ACR2026' || entered === 'MACR2026';
+      const matchFemale = entered === del.femaleAsstCode || entered === 'ACR2026' || entered === 'FACR2026';
+
+      if (gender === 'F' || (matchFemale && !matchMale)) {
+        if (matchFemale || entered === 'ACR2026') {
+          return {
+            valid: true,
+            name: del.femaleAsstName,
+            role: 'assistantCr',
+            classId,
+            rollNo: del.femaleAsstRoll,
+            gender: 'F'
+          };
+        }
+      } else if (matchMale || matchFemale) {
+        return {
+          valid: true,
+          name: (gender === 'F') ? del.femaleAsstName : del.maleAsstName,
+          role: 'assistantCr',
+          classId,
+          rollNo: (gender === 'F') ? del.femaleAsstRoll : del.maleAsstRoll,
+          gender: gender || 'M'
+        };
+      }
+    } else if (role === 'student') {
+      const match = entered === del.studentCode || entered === 'STU2026' || entered === '123456';
+      if (match) {
+        return {
+          valid: true,
+          role: 'student',
+          classId
+        };
+      }
+    }
+
+    return { valid: false, error: 'Invalid verification passcode for this role' };
   }
 };
 

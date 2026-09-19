@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,29 +11,49 @@ class ReportScreen extends StatelessWidget {
   const ReportScreen({super.key, required this.state});
 
   Future<void> _shareOnWhatsApp(BuildContext context, String reportText) async {
+    // 1. Always copy report to clipboard first so the user has it ready
+    await Clipboard.setData(ClipboardData(text: reportText));
+
     final encodedText = Uri.encodeComponent(reportText);
-    final url = Uri.parse("https://wa.me/?text=$encodedText");
+    final whatsappUrl = Uri.parse("https://api.whatsapp.com/send?text=$encodedText");
+    final webWhatsappUrl = Uri.parse("https://web.whatsapp.com/send?text=$encodedText");
+
+    bool launched = false;
     try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        await Clipboard.setData(ClipboardData(text: reportText));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not open WhatsApp directly. Report copied to clipboard instead!'),
-              backgroundColor: AppColors.primary,
-            ),
+      if (kIsWeb) {
+        // On Flutter Web, launch with _blank to open in a new browser tab
+        launched = await launchUrl(
+          whatsappUrl,
+          mode: LaunchMode.platformDefault,
+          webOnlyWindowName: '_blank',
+        );
+        if (!launched) {
+          launched = await launchUrl(
+            webWhatsappUrl,
+            mode: LaunchMode.platformDefault,
+            webOnlyWindowName: '_blank',
           );
         }
+      } else {
+        if (await canLaunchUrl(whatsappUrl)) {
+          launched = await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+        } else {
+          launched = await launchUrl(whatsappUrl, mode: LaunchMode.platformDefault);
+        }
       }
-    } catch (_) {
-      await Clipboard.setData(ClipboardData(text: reportText));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Report copied to clipboard!')),
-        );
-      }
+    } catch (_) {}
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.presentGreen,
+          content: Text(
+            launched
+                ? '📱 Opening WhatsApp! Report also copied to clipboard.'
+                : '📋 Report copied to clipboard! Paste it into your WhatsApp group.',
+          ),
+        ),
+      );
     }
   }
 

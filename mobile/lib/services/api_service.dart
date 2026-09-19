@@ -132,4 +132,111 @@ class ApiService {
         .map((s) => AttendanceRecord.fromJson(json.decode(s)))
         .toList();
   }
+
+  // Fetch current class delegation (Advisor, CR, Asst CR, Passcodes)
+  static Future<ClassDelegation?> fetchDelegation({String classId = 'I-MCA-A'}) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_activeBaseUrl/class-delegation/$classId'))
+          .timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['delegation'] != null) {
+          return ClassDelegation.fromJson(data['delegation']);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // Admin assigns Class Advisor and sets their passcode
+  static Future<bool> adminAssignAdvisor({
+    String classId = 'I-MCA-A',
+    required String advisorName,
+    required String advisorCode,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_activeBaseUrl/admin/assign-advisor'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({
+              'classId': classId,
+              'advisorName': advisorName,
+              'advisorCode': advisorCode,
+            }),
+          )
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Advisor appoints CR & Assistant CRs and configures passcodes
+  static Future<bool> advisorDelegate({
+    String classId = 'I-MCA-A',
+    int? crRoll,
+    String? crName,
+    String? crCode,
+    int? maleAsstRoll,
+    String? maleAsstName,
+    String? maleAsstCode,
+    int? femaleAsstRoll,
+    String? femaleAsstName,
+    String? femaleAsstCode,
+    String? studentCode,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_activeBaseUrl/advisor/delegate'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({
+              'classId': classId,
+              if (crRoll != null) 'crRoll': crRoll,
+              if (crName != null) 'crName': crName,
+              if (crCode != null) 'crCode': crCode,
+              if (maleAsstRoll != null) 'maleAsstRoll': maleAsstRoll,
+              if (maleAsstName != null) 'maleAsstName': maleAsstName,
+              if (maleAsstCode != null) 'maleAsstCode': maleAsstCode,
+              if (femaleAsstRoll != null) 'femaleAsstRoll': femaleAsstRoll,
+              if (femaleAsstName != null) 'femaleAsstName': femaleAsstName,
+              if (femaleAsstCode != null) 'femaleAsstCode': femaleAsstCode,
+              if (studentCode != null) 'studentCode': studentCode,
+            }),
+          )
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Verify Passcode against backend dynamic delegation store
+  static Future<Map<String, dynamic>?> verifyRolePasscode({
+    String classId = 'I-MCA-A',
+    required String role,
+    required String code,
+    String? gender,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_activeBaseUrl/auth/verify-code'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({
+              'classId': classId,
+              'role': role,
+              'code': code,
+              'gender': gender,
+            }),
+          )
+          .timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
 }

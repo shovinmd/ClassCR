@@ -5,10 +5,9 @@ import '../data/mca_students.dart';
 import '../services/api_service.dart';
 
 class ClassCRState extends ChangeNotifier {
-  // Offline Passcodes for First-Time Verification
-  static const String codeCR = 'CR2026';
-  static const String codeAssistantCR = 'ACR2026';
-  static const String codeAdvisor = 'ADV2026';
+  // Active Class Delegation & Passcodes
+  ClassDelegation _delegation = const ClassDelegation(classId: 'I-MCA-A');
+  ClassDelegation get delegation => _delegation;
 
   // Setup completion state
   bool _isSetupDone = false;
@@ -100,6 +99,10 @@ class ClassCRState extends ChangeNotifier {
     final available = await ApiService.isBackendAvailable();
     _isOnline = available;
     if (available) {
+      final remoteDelegation = await ApiService.fetchDelegation(classId: 'I-MCA-A');
+      if (remoteDelegation != null) {
+        _delegation = remoteDelegation;
+      }
       final remoteStudents = await ApiService.fetchStudents(classId: 'I-MCA-A');
       if (remoteStudents != null && remoteStudents.isNotEmpty) {
         _students = remoteStudents;
@@ -112,6 +115,139 @@ class ClassCRState extends ChangeNotifier {
     final queue = await ApiService.loadOfflineQueue();
     _pendingSyncCount = queue.length;
     notifyListeners();
+  }
+
+  // Admin assigns Class Advisor and sets passcode
+  Future<bool> adminAssignAdvisor({
+    String classId = 'I-MCA-A',
+    required String advisorName,
+    required String advisorCode,
+  }) async {
+    _delegation = ClassDelegation(
+      classId: classId,
+      advisorName: advisorName,
+      advisorCode: advisorCode.toUpperCase(),
+      crRoll: _delegation.crRoll,
+      crName: _delegation.crName,
+      crCode: _delegation.crCode,
+      maleAsstRoll: _delegation.maleAsstRoll,
+      maleAsstName: _delegation.maleAsstName,
+      maleAsstCode: _delegation.maleAsstCode,
+      femaleAsstRoll: _delegation.femaleAsstRoll,
+      femaleAsstName: _delegation.femaleAsstName,
+      femaleAsstCode: _delegation.femaleAsstCode,
+      studentCode: _delegation.studentCode,
+    );
+    notifyListeners();
+    return await ApiService.adminAssignAdvisor(
+      classId: classId,
+      advisorName: advisorName,
+      advisorCode: advisorCode,
+    );
+  }
+
+  // Advisor sets CR & Asst CRs and their passcodes
+  Future<bool> advisorDelegate({
+    String classId = 'I-MCA-A',
+    int? crRoll,
+    String? crName,
+    String? crCode,
+    int? maleAsstRoll,
+    String? maleAsstName,
+    String? maleAsstCode,
+    int? femaleAsstRoll,
+    String? femaleAsstName,
+    String? femaleAsstCode,
+    String? studentCode,
+  }) async {
+    _delegation = ClassDelegation(
+      classId: classId,
+      advisorName: _delegation.advisorName,
+      advisorCode: _delegation.advisorCode,
+      crRoll: crRoll ?? _delegation.crRoll,
+      crName: crName ?? _delegation.crName,
+      crCode: (crCode ?? _delegation.crCode).toUpperCase(),
+      maleAsstRoll: maleAsstRoll ?? _delegation.maleAsstRoll,
+      maleAsstName: maleAsstName ?? _delegation.maleAsstName,
+      maleAsstCode: (maleAsstCode ?? _delegation.maleAsstCode).toUpperCase(),
+      femaleAsstRoll: femaleAsstRoll ?? _delegation.femaleAsstRoll,
+      femaleAsstName: femaleAsstName ?? _delegation.femaleAsstName,
+      femaleAsstCode: (femaleAsstCode ?? _delegation.femaleAsstCode).toUpperCase(),
+      studentCode: (studentCode ?? _delegation.studentCode).toUpperCase(),
+    );
+    notifyListeners();
+    return await ApiService.advisorDelegate(
+      classId: classId,
+      crRoll: crRoll,
+      crName: crName,
+      crCode: crCode,
+      maleAsstRoll: maleAsstRoll,
+      maleAsstName: maleAsstName,
+      maleAsstCode: maleAsstCode,
+      femaleAsstRoll: femaleAsstRoll,
+      femaleAsstName: femaleAsstName,
+      femaleAsstCode: femaleAsstCode,
+      studentCode: studentCode,
+    );
+  }
+
+  // Dynamic role passcode verification
+  Future<Map<String, dynamic>> verifyRolePasscode({
+    String classId = 'I-MCA-A',
+    required UserRole role,
+    required String code,
+    String? gender,
+  }) async {
+    final entered = code.trim().toUpperCase();
+
+    // 1. Try remote verification
+    final remoteRes = await ApiService.verifyRolePasscode(
+      classId: classId,
+      role: role.name,
+      code: entered,
+      gender: gender,
+    );
+    if (remoteRes != null) {
+      return remoteRes;
+    }
+
+    // 2. Offline fallback verification
+    if (role == UserRole.admin) {
+      if (entered == 'ADMIN2026' || entered == 'ADM2026') {
+        return {'valid': true, 'role': 'admin', 'name': 'College Dean / Administrator', 'classId': classId};
+      }
+    } else if (role == UserRole.advisor) {
+      if (entered == _delegation.advisorCode || entered == 'ADV2026' || entered == 'NAVI2026') {
+        return {'valid': true, 'role': 'advisor', 'name': _delegation.advisorName, 'classId': classId};
+      }
+    } else if (role == UserRole.cr) {
+      if (entered == _delegation.crCode || entered == 'CR2026') {
+        return {'valid': true, 'role': 'cr', 'name': _delegation.crName, 'rollNo': _delegation.crRoll, 'classId': classId, 'gender': 'M'};
+      }
+    } else if (role == UserRole.assistantCr) {
+      final matchMale = entered == _delegation.maleAsstCode || entered == 'ACR2026' || entered == 'MACR2026';
+      final matchFemale = entered == _delegation.femaleAsstCode || entered == 'ACR2026' || entered == 'FACR2026';
+      if (gender == 'F' || (matchFemale && !matchMale)) {
+        if (matchFemale || entered == 'ACR2026') {
+          return {'valid': true, 'role': 'assistantCr', 'name': _delegation.femaleAsstName, 'rollNo': _delegation.femaleAsstRoll, 'classId': classId, 'gender': 'F'};
+        }
+      } else if (matchMale || matchFemale) {
+        return {
+          'valid': true,
+          'role': 'assistantCr',
+          'name': gender == 'F' ? _delegation.femaleAsstName : _delegation.maleAsstName,
+          'rollNo': gender == 'F' ? _delegation.femaleAsstRoll : _delegation.maleAsstRoll,
+          'classId': classId,
+          'gender': gender ?? 'M',
+        };
+      }
+    } else if (role == UserRole.student) {
+      if (entered == _delegation.studentCode || entered == 'STU2026' || entered == '123456') {
+        return {'valid': true, 'role': 'student', 'classId': classId};
+      }
+    }
+
+    return {'valid': false, 'error': 'Invalid verification passcode'};
   }
 
   // Complete First Time Onboarding Setup

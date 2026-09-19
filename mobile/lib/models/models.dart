@@ -185,3 +185,69 @@ class AttendanceRecord {
     'isSynced': isSynced,
   };
 }
+
+class ClassDelegation {
+  final String classId;
+  final String advisorName;
+  final String advisorCode;
+  final int crRoll;
+  final String crName;
+  final String crCode;
+  final int maleAsstRoll;
+  final String maleAsstName;
+  final String maleAsstCode;
+  final int femaleAsstRoll;
+  final String femaleAsstName;
+  final String femaleAsstCode;
+  final String studentCode;
+
+  const ClassDelegation({
+    required this.classId,
+    this.advisorName = 'Prof. Nandhini G (Navi Ma\'am)',
+    this.advisorCode = 'NAVI2026',
+    this.crRoll = 31,
+    this.crName = 'MUTHUVEL R',
+    this.crCode = 'CR2026',
+    this.maleAsstRoll = 45,
+    this.maleAsstName = 'SHOVIN MICHEL DAVID',
+    this.maleAsstCode = 'ACR2026',
+    this.femaleAsstRoll = 13,
+    this.femaleAsstName = 'DHIVYALAKSHMI H',
+    this.femaleAsstCode = 'ACR2026',
+    this.studentCode = 'STU2026',
+  });
+
+  factory ClassDelegation.fromJson(Map<String, dynamic> json) {
+    return ClassDelegation(
+      classId: json['classId']?.toString() ?? 'I-MCA-A',
+      advisorName: json['advisorName']?.toString() ?? 'Prof. Nandhini G (Navi Ma\'am)',
+      advisorCode: json['advisorCode']?.toString() ?? 'NAVI2026',
+      crRoll: json['crRoll'] is int ? json['crRoll'] : int.tryParse(json['crRoll']?.toString() ?? '31') ?? 31,
+      crName: json['crName']?.toString() ?? 'MUTHUVEL R',
+      crCode: json['crCode']?.toString() ?? 'CR2026',
+      maleAsstRoll: json['maleAsstRoll'] is int ? json['maleAsstRoll'] : int.tryParse(json['maleAsstRoll']?.toString() ?? '45') ?? 45,
+      maleAsstName: json['maleAsstName']?.toString() ?? 'SHOVIN MICHEL DAVID',
+      maleAsstCode: json['maleAsstCode']?.toString() ?? 'ACR2026',
+      femaleAsstRoll: json['femaleAsstRoll'] is int ? json['femaleAsstRoll'] : int.tryParse(json['femaleAsstRoll']?.toString() ?? '13') ?? 13,
+      femaleAsstName: json['femaleAsstName']?.toString() ?? 'DHIVYALAKSHMI H',
+      femaleAsstCode: json['femaleAsstCode']?.toString() ?? 'ACR2026',
+      studentCode: json['studentCode']?.toString() ?? 'STU2026',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'classId': classId,
+    'advisorName': advisorName,
+    'advisorCode': advisorCode,
+    'crRoll': crRoll,
+    'crName': crName,
+    'crCode': crCode,
+    'maleAsstRoll': maleAsstRoll,
+    'maleAsstName': maleAsstName,
+    'maleAsstCode': maleAsstCode,
+    'femaleAsstRoll': femaleAsstRoll,
+    'femaleAsstName': femaleAsstName,
+    'femaleAsstCode': femaleAsstCode,
+    'studentCode': studentCode,
+  };
+}

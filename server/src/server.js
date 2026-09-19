@@ -422,6 +422,40 @@ app.get('/api/advisor/class', async (req, res) => {
   });
 });
 
+// Faculty & Staff Directory (MCA Department - MVIT)
+app.get('/api/faculty', async (req, res) => {
+  const department = req.query.department || 'MCA';
+  const faculty = await db.getFaculty(department);
+  res.json({ department, total: faculty.length, faculty });
+});
+
+// Class Delegation & Role Passcode Endpoints
+app.get('/api/class-delegation/:classId', async (req, res) => {
+  const classId = req.params.classId || 'I-MCA-A';
+  const delegation = await db.getDelegation(classId);
+  res.json({ delegation });
+});
+
+app.post('/api/admin/assign-advisor', async (req, res) => {
+  const { classId, advisorName, advisorCode } = req.body;
+  const updated = await db.adminAssignAdvisor({ classId, advisorName, advisorCode });
+  res.json({ success: true, delegation: updated });
+});
+
+app.post('/api/advisor/delegate', async (req, res) => {
+  const updated = await db.advisorDelegate(req.body);
+  res.json({ success: true, delegation: updated });
+});
+
+app.post('/api/auth/verify-code', async (req, res) => {
+  const { classId, role, code, gender } = req.body;
+  const result = await db.verifyPasscode({ classId, role, code, gender });
+  if (!result.valid) {
+    return res.status(401).json(result);
+  }
+  res.json(result);
+});
+
 // Root landing
 app.get('/', (req, res) => {
   res.json({
@@ -433,7 +467,11 @@ app.get('/', (req, res) => {
       '/api/classes',
       '/api/attendance/today',
       '/api/attendance/history',
-      '/api/reports'
+      '/api/reports',
+      '/api/class-delegation/:classId',
+      '/api/admin/assign-advisor',
+      '/api/advisor/delegate',
+      '/api/auth/verify-code'
     ]
   });
 });

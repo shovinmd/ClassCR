@@ -24,7 +24,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
   // Step 3: Student / Advisor Selection
   Student? _selectedStudent;
-  final TextEditingController _advisorNameController = TextEditingController(text: 'Dr. K. Senthil Nathan');
+  late final TextEditingController _advisorNameController;
   final TextEditingController _searchStudentController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
 
@@ -34,9 +34,10 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   void initState() {
     super.initState();
+    _advisorNameController = TextEditingController(text: widget.state.delegation.advisorName);
     // Preselect default CR student: MUTHUVEL R (Roll 31)
     try {
-      _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == 31);
+      _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == widget.state.delegation.crRoll);
     } catch (_) {
       _selectedStudent = widget.state.students.first;
     }
@@ -50,19 +51,6 @@ class _SetupScreenState extends State<SetupScreen> {
     super.dispose();
   }
 
-  String get expectedCode {
-    switch (_selectedRole) {
-      case UserRole.cr:
-        return ClassCRState.codeCR;
-      case UserRole.assistantCr:
-        return ClassCRState.codeAssistantCR;
-      case UserRole.advisor:
-        return ClassCRState.codeAdvisor;
-      default:
-        return '123456';
-    }
-  }
-
   void _verifyAndProceed() async {
     setState(() {
       _errorMessage = '';
@@ -71,9 +59,27 @@ class _SetupScreenState extends State<SetupScreen> {
 
     final enteredCode = _codeController.text.trim().toUpperCase();
 
-    if (enteredCode != expectedCode) {
+    if (enteredCode.isEmpty) {
       setState(() {
-        _errorMessage = 'Invalid verification code for ${_getRoleTitle(_selectedRole)}. Expected: $expectedCode';
+        _errorMessage = 'Please enter the authorized passcode to continue';
+        _isVerifying = false;
+      });
+      return;
+    }
+
+    final studentGender = _selectedStudent != null ? (_selectedStudent!.isFemale ? 'F' : 'M') : null;
+
+    final verification = await widget.state.verifyRolePasscode(
+      classId: 'I-MCA-A',
+      role: _selectedRole,
+      code: enteredCode,
+      gender: studentGender,
+    );
+
+    if (verification['valid'] != true) {
+      setState(() {
+        _errorMessage = verification['error']?.toString() ??
+            'Invalid passcode for ${_getRoleTitle(_selectedRole)}. Please verify with your Class Advisor or Admin.';
         _isVerifying = false;
       });
       return;
@@ -83,8 +89,10 @@ class _SetupScreenState extends State<SetupScreen> {
     String? studentId;
 
     if (_selectedRole == UserRole.advisor) {
-      userName = _advisorNameController.text.trim();
-      if (userName.isEmpty) userName = 'Class Advisor';
+      userName = verification['name']?.toString() ?? _advisorNameController.text.trim();
+      if (userName.isEmpty) userName = 'Prof. Nandhini G (Navi Ma\'am)';
+    } else if (_selectedRole == UserRole.admin) {
+      userName = verification['name']?.toString() ?? 'College Dean / Administrator';
     } else {
       if (_selectedStudent == null) {
         setState(() {
@@ -93,19 +101,22 @@ class _SetupScreenState extends State<SetupScreen> {
         });
         return;
       }
-      userName = '${_selectedStudent!.name} (${_selectedRole == UserRole.cr ? "CR" : "Asst. CR"})';
+      final roleSuffix = _selectedRole == UserRole.cr
+          ? ' (CR)'
+          : (_selectedRole == UserRole.assistantCr ? ' (Asst. CR)' : '');
+      userName = '${_selectedStudent!.name}$roleSuffix';
       studentId = _selectedStudent!.enrollmentNo;
     }
 
     final classId = '$_selectedClass-$_selectedSection';
-    final studentGender = _selectedStudent != null ? (_selectedStudent!.isFemale ? 'F' : 'M') : 'M';
+    final userGender = studentGender ?? 'M';
 
     await widget.state.completeSetup(
       role: _selectedRole,
       name: userName,
       classId: classId,
       studentId: studentId,
-      gender: studentGender,
+      gender: userGender,
     );
 
     if (mounted) {
@@ -130,8 +141,10 @@ class _SetupScreenState extends State<SetupScreen> {
         return 'Assistant CR (Asst. CR)';
       case UserRole.advisor:
         return 'Class Advisor';
-      default:
-        return role.name.toUpperCase();
+      case UserRole.student:
+        return 'Student';
+      case UserRole.admin:
+        return 'College Admin';
     }
   }
 
@@ -227,7 +240,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
               const SizedBox(height: 20),
 
-              // STEP 2: ROLE SELECTION (CR, Asst. CR, Class Advisor)
+              // STEP 2: ROLE SELECTION (CR, Asst. CR, Advisor, Student, Admin)
               _buildSectionHeader('2', 'Select Your Role'),
               const SizedBox(height: 10),
               Row(
@@ -254,14 +267,39 @@ class _SetupScreenState extends State<SetupScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildRoleCard(
+                    role: UserRole.student,
+                    title: 'Student',
+                    subtitle: 'Attendance View',
+                    icon: Icons.school_outlined,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildRoleCard(
+                    role: UserRole.admin,
+                    title: 'Admin',
+                    subtitle: 'Super Admin',
+                    icon: Icons.admin_panel_settings_outlined,
+                  ),
+                ],
+              ),
 
               const SizedBox(height: 20),
 
               // STEP 3: IDENTIFY PERSON IN CLASS
-              _buildSectionHeader('3', _selectedRole == UserRole.advisor ? 'Advisor Details' : 'Verify Student from Roster'),
+              _buildSectionHeader(
+                '3',
+                _selectedRole == UserRole.advisor
+                    ? 'Advisor Details'
+                    : (_selectedRole == UserRole.admin
+                        ? 'Administrator Verification'
+                        : 'Verify Student from Roster'),
+              ),
               const SizedBox(height: 10),
 
-              if (_selectedRole == UserRole.advisor) ...[
+              if (_selectedRole == UserRole.admin) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -269,13 +307,44 @@ class _SetupScreenState extends State<SetupScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.cardBorder),
                   ),
-                  child: TextField(
-                    controller: _advisorNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Advisor Full Name',
-                      prefixIcon: Icon(Icons.person, color: AppColors.primary),
-                      border: OutlineInputBorder(),
-                    ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.shield, color: AppColors.primary, size: 28),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'College Dean & System Administrator.\nFull administrative oversight over departments, classes, and advisor appointments.',
+                          style: TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (_selectedRole == UserRole.advisor) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _advisorNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Advisor Full Name',
+                          prefixIcon: Icon(Icons.person, color: AppColors.primary),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Assigned Class: I MCA A • Batch 2026–2028',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ),
                 ),
               ] else ...[
@@ -504,17 +573,18 @@ class _SetupScreenState extends State<SetupScreen> {
         onTap: () {
           setState(() {
             _selectedRole = role;
-            _codeController.text = expectedCode;
+            _codeController.clear(); // HIDE CODE: Never prefill with secret passcode!
             _errorMessage = '';
-            // Auto-select Shovin Michel David (Roll 45) for Assistant CR, or Muthuvel (Roll 31) for CR
             if (role == UserRole.assistantCr) {
               try {
-                _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == 45);
+                _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == widget.state.delegation.maleAsstRoll);
               } catch (_) {}
             } else if (role == UserRole.cr) {
               try {
-                _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == 31);
+                _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == widget.state.delegation.crRoll);
               } catch (_) {}
+            } else if (role == UserRole.student) {
+              _selectedStudent ??= widget.state.students.first;
             }
           });
         },
