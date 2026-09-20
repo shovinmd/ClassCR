@@ -36,17 +36,35 @@ class ClassCRState extends ChangeNotifier {
   List<Student> _students = List.from(kInitialMcaStudents);
   List<Student> get students => _students;
 
-  // Today's attendance state
-  String _todayDate = '2026-09-18';
-  String get todayDate => _todayDate;
+  // Today's attendance state (Real-Time Dynamic Date)
+  static String get _initialDate {
+    final now = DateTime.now();
+    return "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+  }
 
-  // Set of absent roll numbers (default 9 absentees from prompt example: 43 present, 9 absent)
-  final Set<int> _absentRolls = {13, 25, 27, 28, 31, 34, 37, 44, 52};
+  String _todayDate = _initialDate;
+  String get todayDate => _todayDate;
+  String get formattedTodayDate => _formatDateForReport(_todayDate);
+
+  // Active attendance record for current date
+  AttendanceRecord? _currentAttendanceRecord;
+  AttendanceRecord? get currentAttendanceRecord => _currentAttendanceRecord;
+
+  // Locked attendance check: once submitted, locked for CR & Asst CR
+  bool get isAttendanceLocked =>
+      _currentAttendanceRecord != null && (_currentAttendanceRecord!.isLocked || _currentAttendanceRecord!.status == 'submitted');
+
+  // Only advisor or admin can edit attendance after submission
+  bool get canModifyAttendance =>
+      !isAttendanceLocked || _currentUser.role == UserRole.advisor || _currentUser.role == UserRole.admin;
+
+  // Set of absent roll numbers
+  final Set<int> _absentRolls = {};
   Set<int> get absentRolls => _absentRolls;
 
   int get totalCount => _students.length; // 52
-  int get absentCount => _absentRolls.length; // 9
-  int get presentCount => totalCount - absentCount; // 43
+  int get absentCount => _absentRolls.length;
+  int get presentCount => totalCount - absentCount;
 
   // Attendance History
   List<AttendanceRecord> _history = List.from(kInitialHistoryRecords);
@@ -60,7 +78,7 @@ class ClassCRState extends ChangeNotifier {
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
 
-  String? _crNotes = 'Morning session attendance verified and submitted to advisor.';
+  String? _crNotes = 'Daily attendance session verified and submitted to advisor.';
   String? get crNotes => _crNotes;
 
   ClassCRState() {
@@ -116,10 +134,58 @@ class ClassCRState extends ChangeNotifier {
       if (remoteHistory != null && remoteHistory.isNotEmpty) {
         _history = remoteHistory;
       }
+      final remoteToday = await ApiService.fetchTodayAttendance(classId: 'I-MCA-A', date: _todayDate);
+      if (remoteToday != null) {
+        _currentAttendanceRecord = remoteToday;
+        _absentRolls.clear();
+        _absentRolls.addAll(remoteToday.absentRolls);
+        _crNotes = remoteToday.notes;
+      } else {
+        await _loadAttendanceForDate(_todayDate);
+      }
+    } else {
+      await _loadAttendanceForDate(_todayDate);
     }
     final queue = await ApiService.loadOfflineQueue();
     _pendingSyncCount = queue.length;
     notifyListeners();
+  }
+
+  // Switch / pick date dynamically
+  Future<void> setDate(String newDate) async {
+    if (_todayDate == newDate) return;
+    _todayDate = newDate;
+    await _loadAttendanceForDate(newDate);
+    notifyListeners();
+  }
+
+  Future<void> _loadAttendanceForDate(String date) async {
+    // 1. Check in local history
+    final existing = _history.where((r) => r.date == date).toList();
+    if (existing.isNotEmpty) {
+      _currentAttendanceRecord = existing.first;
+      _absentRolls.clear();
+      _absentRolls.addAll(_currentAttendanceRecord!.absentRolls);
+      _crNotes = _currentAttendanceRecord!.notes;
+      return;
+    }
+
+    // 2. Check remote backend if online
+    if (_isOnline) {
+      final remote = await ApiService.fetchTodayAttendance(classId: _currentUser.classId ?? 'I-MCA-A', date: date);
+      if (remote != null) {
+        _currentAttendanceRecord = remote;
+        _absentRolls.clear();
+        _absentRolls.addAll(remote.absentRolls);
+        _crNotes = remote.notes;
+        return;
+      }
+    }
+
+    // 3. Fresh unsubmitted date
+    _currentAttendanceRecord = null;
+    _absentRolls.clear();
+    _crNotes = 'Daily attendance session verified and submitted to advisor.';
   }
 
   // Admin assigns Class Advisor and sets passcode
@@ -305,12 +371,14 @@ class ClassCRState extends ChangeNotifier {
 
   // Quick Section Mark Actions (for Male/Female Cross-Checking)
   void markSectionPresent({required bool isFemale}) {
+    if (!canModifyAttendance) return;
     final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
     _absentRolls.removeAll(rolls);
     notifyListeners();
   }
 
   void markSectionAbsent({required bool isFemale}) {
+    if (!canModifyAttendance) return;
     final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
     _absentRolls.addAll(rolls);
     notifyListeners();
@@ -320,23 +388,29 @@ class ClassCRState extends ChangeNotifier {
   bool isAbsent(int rollNo) => _absentRolls.contains(rollNo);
   bool isPresent(int rollNo) => !_absentRolls.contains(rollNo);
 
-  void toggleStatus(int rollNo) {
+  bool toggleStatus(int rollNo) {
+    if (!canModifyAttendance) return false;
     if (_absentRolls.contains(rollNo)) {
       _absentRolls.remove(rollNo);
     } else {
       _absentRolls.add(rollNo);
     }
     notifyListeners();
+    return true;
   }
 
-  void markAllPresent() {
+  bool markAllPresent() {
+    if (!canModifyAttendance) return false;
     _absentRolls.clear();
     notifyListeners();
+    return true;
   }
 
-  void markAllAbsent() {
+  bool markAllAbsent() {
+    if (!canModifyAttendance) return false;
     _absentRolls.addAll(_students.map((s) => s.rollNo));
     notifyListeners();
+    return true;
   }
 
   void updateNotes(String notes) {
@@ -344,9 +418,12 @@ class ClassCRState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Submit Attendance
+  // Submit Attendance (Sets isLocked: true and records author attribution)
   Future<bool> submitAttendance({String? notes}) async {
     _crNotes = notes ?? _crNotes;
+    final authorName = _currentUser.name;
+    final authorRole = _currentUser.roleDisplayName;
+
     final record = AttendanceRecord(
       id: 'att_${_todayDate.replaceAll('-', '')}',
       classId: _currentUser.classId ?? 'I-MCA-A',
@@ -355,11 +432,17 @@ class ClassCRState extends ChangeNotifier {
       presentCount: presentCount,
       absentCount: absentCount,
       absentRolls: _absentRolls.toList()..sort(),
+      markedByName: authorName,
+      markedByRole: authorRole,
+      isLocked: true,
+      lastModifiedBy: _currentAttendanceRecord?.lastModifiedBy,
       status: 'submitted',
-      submittedAt: '09:18 AM',
+      submittedAt: _currentAttendanceRecord?.submittedAt ?? '09:18 AM',
       notes: _crNotes,
       isSynced: _isOnline,
     );
+
+    _currentAttendanceRecord = record;
 
     // Update in local history
     final existingIndex = _history.indexWhere((r) => r.date == _todayDate);
@@ -375,9 +458,70 @@ class ClassCRState extends ChangeNotifier {
         date: record.date,
         absentRolls: record.absentRolls,
         notes: record.notes,
+        userRole: _currentUser.role.name,
+        userName: _currentUser.name,
+        markedByName: authorName,
+        markedByRole: authorRole,
+        isLocked: true,
+        lastModifiedBy: record.lastModifiedBy,
       );
       if (!success) {
-        // Queue offline
+        await _queueRecord(record);
+      }
+    } else {
+      await _queueRecord(record);
+    }
+
+    notifyListeners();
+    return true;
+  }
+
+  // Advisor modifies and approves attendance after submission
+  Future<bool> saveAdvisorAttendanceOverride({String? notes}) async {
+    _crNotes = notes ?? _crNotes;
+    final advisorName = _delegation.advisorName;
+
+    final record = AttendanceRecord(
+      id: 'att_${_todayDate.replaceAll('-', '')}',
+      classId: _currentUser.classId ?? 'I-MCA-A',
+      date: _todayDate,
+      totalStudents: totalCount,
+      presentCount: presentCount,
+      absentCount: absentCount,
+      absentRolls: _absentRolls.toList()..sort(),
+      markedByName: _currentAttendanceRecord?.markedByName ?? _delegation.crName,
+      markedByRole: _currentAttendanceRecord?.markedByRole ?? 'CR',
+      isLocked: true,
+      lastModifiedBy: advisorName,
+      status: 'submitted',
+      submittedAt: _currentAttendanceRecord?.submittedAt ?? '09:18 AM',
+      notes: _crNotes,
+      isSynced: _isOnline,
+    );
+
+    _currentAttendanceRecord = record;
+
+    final existingIndex = _history.indexWhere((r) => r.date == _todayDate);
+    if (existingIndex >= 0) {
+      _history[existingIndex] = record;
+    } else {
+      _history.insert(0, record);
+    }
+
+    if (_isOnline) {
+      final success = await ApiService.submitAttendance(
+        classId: record.classId,
+        date: record.date,
+        absentRolls: record.absentRolls,
+        notes: record.notes,
+        userRole: 'advisor',
+        userName: advisorName,
+        markedByName: record.markedByName,
+        markedByRole: record.markedByRole,
+        isLocked: true,
+        lastModifiedBy: advisorName,
+      );
+      if (!success) {
         await _queueRecord(record);
       }
     } else {
@@ -524,10 +668,20 @@ class ClassCRState extends ChangeNotifier {
   // Generate Smart Report formatted text
   String generateSmartReportText() {
     final sortedAbsentees = _absentRolls.toList()..sort();
+    final author = _currentAttendanceRecord?.markedByName ?? _currentUser.name;
+    final authorRole = _currentAttendanceRecord?.markedByRole ?? _currentUser.roleDisplayName;
+    final advisor = _delegation.advisorName;
+
     final buffer = StringBuffer();
     buffer.writeln("Attendance Report");
-    buffer.writeln("I MCA");
+    buffer.writeln("I MCA A — MVIT");
     buffer.writeln("Date: ${_formatDateForReport(_todayDate)}");
+    buffer.writeln("Marked By: $author ($authorRole)");
+    if (_currentAttendanceRecord?.lastModifiedBy != null && _currentAttendanceRecord!.lastModifiedBy!.isNotEmpty) {
+      buffer.writeln("Advisor Approval: ${_currentAttendanceRecord!.lastModifiedBy}");
+    } else {
+      buffer.writeln("Verified by Class Advisor: $advisor");
+    }
     buffer.writeln();
     buffer.writeln("Total Students: $totalCount");
     buffer.writeln("Present: $presentCount");

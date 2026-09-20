@@ -60,6 +60,10 @@ function mapAttendance(row) {
     absentCount: row.absent_count !== undefined ? row.absent_count : (row.absentCount || 0),
     absentRolls: row.absent_rolls !== undefined ? (typeof row.absent_rolls === 'string' ? JSON.parse(row.absent_rolls) : row.absent_rolls) : (row.absentRolls || []),
     markedBy: row.marked_by !== undefined ? row.marked_by : (row.markedBy || 'cr'),
+    markedByName: row.marked_by_name !== undefined ? row.marked_by_name : (row.markedByName || ''),
+    markedByRole: row.marked_by_role !== undefined ? row.marked_by_role : (row.markedByRole || ''),
+    isLocked: row.is_locked !== undefined ? Boolean(row.is_locked) : (row.isLocked !== undefined ? Boolean(row.isLocked) : true),
+    lastModifiedBy: row.last_modified_by !== undefined ? row.last_modified_by : (row.lastModifiedBy || ''),
     status: row.status || 'submitted',
     submittedAt: row.submitted_at !== undefined ? row.submitted_at : (row.submittedAt || new Date().toISOString()),
     notes: row.notes || ''
@@ -147,6 +151,10 @@ const memoryStore = {
       absentCount: 9,
       absentRolls: [13, 25, 27, 28, 31, 34, 37, 44, 52],
       markedBy: 'user_cr_1',
+      markedByName: 'MUTHUVEL R',
+      markedByRole: 'CR',
+      isLocked: true,
+      lastModifiedBy: '',
       status: 'submitted',
       submittedAt: '2026-09-18T09:18:00Z',
       notes: 'Morning session attendance verified and submitted to advisor.'
@@ -272,6 +280,7 @@ const db = {
 
   // Fetch attendance by specific date
   async getAttendanceByDate(classId = 'I-MCA-A', date) {
+    const memRecord = memoryStore.attendanceRecords.find(r => r.classId === classId && r.date === date) || null;
     try {
       const { data, error } = await supabase
         .from('attendance_records')
@@ -281,10 +290,16 @@ const db = {
         .maybeSingle();
 
       if (!error && data) {
-        return mapAttendance(data);
+        const mapped = mapAttendance(data);
+        if (memRecord) {
+          mapped.markedByName = mapped.markedByName || memRecord.markedByName;
+          mapped.markedByRole = mapped.markedByRole || memRecord.markedByRole;
+          mapped.lastModifiedBy = mapped.lastModifiedBy || memRecord.lastModifiedBy;
+        }
+        return mapped;
       }
     } catch (_) {}
-    return memoryStore.attendanceRecords.find(r => r.classId === classId && r.date === date) || null;
+    return memRecord;
   },
 
   // Save or update attendance record
@@ -308,11 +323,33 @@ const db = {
         absent_count: record.absentCount,
         absent_rolls: record.absentRolls,
         marked_by: record.markedBy,
+        marked_by_name: record.markedByName || '',
+        marked_by_role: record.markedByRole || '',
+        is_locked: record.isLocked !== undefined ? Boolean(record.isLocked) : true,
+        last_modified_by: record.lastModifiedBy || '',
         status: record.status || 'submitted',
         submitted_at: record.submittedAt || new Date().toISOString(),
         notes: record.notes || ''
       };
-      const { error } = await supabase.from('attendance_records').upsert(dbRow, { onConflict: 'class_id,date' });
+      let { error } = await supabase.from('attendance_records').upsert(dbRow, { onConflict: 'class_id,date' });
+      if (error && error.message && error.message.includes('column')) {
+        // Fallback for older database schema without added audit columns
+        const coreRow = {
+          id: record.id,
+          class_id: record.classId,
+          date: record.date,
+          total_students: record.totalStudents,
+          present_count: record.presentCount,
+          absent_count: record.absentCount,
+          absent_rolls: record.absentRolls,
+          marked_by: record.markedBy,
+          status: record.status || 'submitted',
+          submitted_at: record.submittedAt || new Date().toISOString(),
+          notes: record.notes || ''
+        };
+        const res = await supabase.from('attendance_records').upsert(coreRow, { onConflict: 'class_id,date' });
+        error = res.error;
+      }
       if (error) {
         console.warn('Supabase upsert attendance notice:', error.message);
       } else {

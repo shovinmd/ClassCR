@@ -158,12 +158,44 @@ class ReportScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.deepBlue),
                   ),
                   const Text(
-                    'I MCA',
+                    'I MCA A — MVIT',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary),
                   ),
-                  const Text(
-                    'Date: 18/09/2026',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  Text(
+                    'Date: ${state.formattedTodayDate}',
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: Text(
+                          'Marked by: ${state.currentAttendanceRecord?.markedByName ?? state.currentUser.name} (${state.currentAttendanceRecord?.markedByRole ?? state.currentUser.roleDisplayName})',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ),
+                      if (state.currentAttendanceRecord?.lastModifiedBy != null && state.currentAttendanceRecord!.lastModifiedBy!.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFA7F3D0)),
+                          ),
+                          child: Text(
+                            'Advisor Approved: ${state.currentAttendanceRecord!.lastModifiedBy}',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                          ),
+                        ),
+                    ],
                   ),
 
                   const Divider(height: 24, thickness: 1),

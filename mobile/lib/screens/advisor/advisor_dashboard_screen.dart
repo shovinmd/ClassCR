@@ -203,9 +203,9 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          "I MCA — Today's Report",
-                          style: TextStyle(
+                        Text(
+                          "I MCA — ${widget.state.formattedTodayDate}",
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: AppColors.deepBlue,
@@ -214,19 +214,27 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.presentGreen.withOpacity(0.12),
+                            color: widget.state.isAttendanceLocked
+                                ? AppColors.presentGreen.withOpacity(0.12)
+                                : const Color(0xFFFEF3C7),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.check_circle, size: 14, color: AppColors.presentGreen),
-                              SizedBox(width: 4),
+                              Icon(
+                                widget.state.isAttendanceLocked ? Icons.check_circle : Icons.schedule,
+                                size: 14,
+                                color: widget.state.isAttendanceLocked ? AppColors.presentGreen : const Color(0xFFD97706),
+                              ),
+                              const SizedBox(width: 4),
                               Text(
-                                'Submitted (09:18 AM)',
+                                widget.state.isAttendanceLocked
+                                    ? 'Submitted (${widget.state.currentAttendanceRecord?.submittedAt ?? "09:18 AM"})'
+                                    : 'Pending Submission',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.presentGreen,
+                                  color: widget.state.isAttendanceLocked ? AppColors.presentGreen : const Color(0xFFD97706),
                                 ),
                               ),
                             ],
@@ -248,7 +256,7 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
 
                     const SizedBox(height: 18),
 
-                    // CR Status & Last Updated
+                    // Marked By & Last Updated
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -259,25 +267,44 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'CR Status',
-                                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                              ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  const Icon(Icons.check, size: 14, color: AppColors.presentGreen),
-                                  const SizedBox(width: 4),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Attendance Marked By',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      widget.state.isAttendanceLocked ? Icons.verified : Icons.pending,
+                                      size: 14,
+                                      color: widget.state.isAttendanceLocked ? AppColors.presentGreen : AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        widget.state.currentAttendanceRecord?.markedByName != null
+                                            ? '${widget.state.currentAttendanceRecord!.markedByName} (${widget.state.currentAttendanceRecord!.markedByRole ?? "CR"})'
+                                            : '${widget.state.delegation.crName} (CR)',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (widget.state.currentAttendanceRecord?.lastModifiedBy != null &&
+                                    widget.state.currentAttendanceRecord!.lastModifiedBy!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
                                   Text(
-                                    'Submitted by ${widget.state.delegation.crName}',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                    'Approved by Advisor: ${widget.state.currentAttendanceRecord!.lastModifiedBy}',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
                                   ),
                                 ],
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
@@ -287,9 +314,9 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                                 style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                               ),
                               const SizedBox(height: 2),
-                              const Text(
-                                '09:18 AM',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              Text(
+                                widget.state.currentAttendanceRecord?.submittedAt ?? '09:18 AM',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
@@ -407,6 +434,34 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                     },
                   ),
                 ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final success = await widget.state.saveAdvisorAttendanceOverride();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          backgroundColor: success ? AppColors.presentGreen : AppColors.absentRed,
+                          content: Text(
+                            success
+                                ? '✅ Attendance changes approved & synced to backend database!'
+                                : '⚠️ Failed to sync changes. Stored in offline queue.',
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text('Save & Approve Attendance Changes to Backend'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.presentGreen,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
               ],
 
               // APPOINT CR, ASST. CRS & CONFIGURE PASSCODES (Advisor authority)

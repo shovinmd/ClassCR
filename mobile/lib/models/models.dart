@@ -112,6 +112,10 @@ class AttendanceRecord {
   final String? submittedAt;
   final String? notes;
   final bool isSynced;
+  final String? markedByName;
+  final String? markedByRole;
+  final bool isLocked;
+  final String? lastModifiedBy;
 
   const AttendanceRecord({
     required this.id,
@@ -125,6 +129,10 @@ class AttendanceRecord {
     this.submittedAt,
     this.notes,
     this.isSynced = true,
+    this.markedByName,
+    this.markedByRole,
+    this.isLocked = true,
+    this.lastModifiedBy,
   });
 
   AttendanceRecord copyWith({
@@ -139,6 +147,10 @@ class AttendanceRecord {
     String? submittedAt,
     String? notes,
     bool? isSynced,
+    String? markedByName,
+    String? markedByRole,
+    bool? isLocked,
+    String? lastModifiedBy,
   }) {
     return AttendanceRecord(
       id: id ?? this.id,
@@ -152,6 +164,10 @@ class AttendanceRecord {
       submittedAt: submittedAt ?? this.submittedAt,
       notes: notes ?? this.notes,
       isSynced: isSynced ?? this.isSynced,
+      markedByName: markedByName ?? this.markedByName,
+      markedByRole: markedByRole ?? this.markedByRole,
+      isLocked: isLocked ?? this.isLocked,
+      lastModifiedBy: lastModifiedBy ?? this.lastModifiedBy,
     );
   }
 
@@ -168,6 +184,10 @@ class AttendanceRecord {
       submittedAt: json['submittedAt'],
       notes: json['notes'],
       isSynced: json['isSynced'] ?? true,
+      markedByName: json['markedByName'],
+      markedByRole: json['markedByRole'],
+      isLocked: json['isLocked'] == true || json['status'] == 'submitted',
+      lastModifiedBy: json['lastModifiedBy'],
     );
   }
 
@@ -183,6 +203,10 @@ class AttendanceRecord {
     'submittedAt': submittedAt,
     'notes': notes,
     'isSynced': isSynced,
+    'markedByName': markedByName,
+    'markedByRole': markedByRole,
+    'isLocked': isLocked,
+    'lastModifiedBy': lastModifiedBy,
   };
 }
 

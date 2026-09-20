@@ -50,11 +50,21 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
   absent_count INTEGER NOT NULL,
   absent_rolls JSONB NOT NULL DEFAULT '[]'::jsonb,
   marked_by TEXT,
+  marked_by_name TEXT,
+  marked_by_role TEXT,
+  is_locked BOOLEAN DEFAULT true,
+  last_modified_by TEXT,
   status TEXT DEFAULT 'submitted',
   submitted_at TIMESTAMPTZ DEFAULT NOW(),
   notes TEXT,
   UNIQUE(class_id, date)
 );
+
+-- Migrations for existing deployments
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS marked_by_name TEXT;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS marked_by_role TEXT;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT true;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS last_modified_by TEXT;
 
 CREATE TABLE IF NOT EXISTS public.reports (
   id TEXT PRIMARY KEY,

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme.dart';
 import 'providers/classcr_state.dart';
-import 'screens/main_shell.dart';
-
 import 'screens/splash_screen.dart';
 
 void main() {

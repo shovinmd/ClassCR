@@ -157,9 +157,9 @@ class CrHomeScreen extends StatelessWidget {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        "18/09/2026",
-                        style: TextStyle(
+                      child: Text(
+                        state.formattedTodayDate,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,

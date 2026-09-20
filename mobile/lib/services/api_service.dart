@@ -75,10 +75,13 @@ class ApiService {
     return null;
   }
 
-  static Future<AttendanceRecord?> fetchTodayAttendance({String classId = 'I-MCA-A'}) async {
+  static Future<AttendanceRecord?> fetchTodayAttendance({String classId = 'I-MCA-A', String? date}) async {
     try {
+      final url = date != null
+          ? '$_activeBaseUrl/attendance/today?classId=$classId&date=$date'
+          : '$_activeBaseUrl/attendance/today?classId=$classId';
       final response = await http
-          .get(Uri.parse('$_activeBaseUrl/attendance/today?classId=$classId'))
+          .get(Uri.parse(url))
           .timeout(const Duration(seconds: 3));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -95,6 +98,12 @@ class ApiService {
     required String date,
     required List<int> absentRolls,
     String? notes,
+    String? userRole,
+    String? userName,
+    String? markedByName,
+    String? markedByRole,
+    bool isLocked = true,
+    String? lastModifiedBy,
   }) async {
     try {
       final response = await http
@@ -102,16 +111,22 @@ class ApiService {
             Uri.parse('$_activeBaseUrl/attendance'),
             headers: {
               'Content-Type': 'application/json',
-              'x-mock-role': 'cr',
+              'x-mock-role': userRole ?? 'cr',
+              if (userName != null) 'x-user-name': userName,
+              'x-class-id': classId,
             },
             body: json.encode({
               'classId': classId,
               'date': date,
               'absentRolls': absentRolls,
               'notes': notes,
+              'markedByName': markedByName,
+              'markedByRole': markedByRole,
+              'isLocked': isLocked,
+              'lastModifiedBy': lastModifiedBy,
             }),
           )
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 4));
       return response.statusCode == 200;
     } catch (_) {
       return false;

@@ -23,7 +23,16 @@ async function authenticateToken(req, res, next) {
     if (mockRole) {
       const email = `${mockRole}@classcr.edu`;
       const user = await db.getUserByEmail(email);
-      req.user = user || { id: `user_${mockRole}`, role: mockRole, classId: 'I-MCA-A', name: `${mockRole.toUpperCase()} User` };
+      const userNameHeader = req.headers['x-user-name'];
+      req.user = user || {
+        id: `user_${mockRole}`,
+        role: mockRole,
+        classId: req.headers['x-class-id'] || 'I-MCA-A',
+        name: userNameHeader || `${mockRole.toUpperCase()} User`
+      };
+      if (userNameHeader) {
+        req.user.name = userNameHeader;
+      }
       return next();
     }
     return res.status(401).json({ error: 'Access token required' });
@@ -168,13 +177,13 @@ app.get('/api/classes/:id', async (req, res) => {
 // Attendance Endpoints
 app.get('/api/attendance/today', async (req, res) => {
   const classId = req.query.classId || 'I-MCA-A';
-  const today = '2026-09-18';
+  const today = req.query.date || new Date().toISOString().slice(0, 10);
   let record = await db.getAttendanceByDate(classId, today);
-  if (!record) {
+  if (!record && req.query.date === undefined) {
     const history = await db.getAttendanceHistory(classId);
     record = history[0] || null;
   }
-  res.json({ attendance: record });
+  res.json({ attendance: record, todayDate: today });
 });
 
 app.get('/api/attendance/date/:date', async (req, res) => {
@@ -194,12 +203,28 @@ app.get('/api/attendance/history', async (req, res) => {
 
 // Submit Attendance
 app.post('/api/attendance', authenticateToken, async (req, res) => {
-  const { classId, date, absentRolls, notes } = req.body;
+  const { classId, date, absentRolls, notes, markedByName, markedByRole } = req.body;
   const targetClass = classId || req.user.classId || 'I-MCA-A';
+  const recordDate = date || new Date().toISOString().slice(0, 10);
 
   // Backend RBAC enforcement: CR can only submit for assigned class
   if (req.user.role === 'cr' && req.user.classId && req.user.classId !== targetClass) {
     return res.status(403).json({ error: 'Forbidden: CR cannot mark attendance for other classes' });
+  }
+
+  // Check if attendance already exists and is locked
+  const existing = await db.getAttendanceByDate(targetClass, recordDate);
+  const isAdvisorOrAdmin = req.user.role === 'advisor' || req.user.role === 'admin';
+
+  if (existing && (existing.isLocked || existing.status === 'submitted')) {
+    if (!isAdvisorOrAdmin) {
+      return res.status(403).json({
+        error: 'Attendance is locked after submission. Only Class Advisor can modify attendance.',
+        isLocked: true,
+        markedByName: existing.markedByName,
+        markedByRole: existing.markedByRole
+      });
+    }
   }
 
   const students = await db.getStudents(targetClass);
@@ -207,17 +232,24 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
   const absentCount = (absentRolls || []).length;
   const presentCount = total - absentCount;
 
+  const authorName = markedByName || (existing && existing.markedByName ? existing.markedByName : (req.user.name || 'CR'));
+  const authorRole = markedByRole || (existing && existing.markedByRole ? existing.markedByRole : (req.user.role === 'assistantCr' ? 'Assistant CR' : (req.user.role === 'cr' ? 'CR' : 'Advisor')));
+
   const newRecord = {
-    id: `att_${(date || new Date().toISOString().slice(0, 10)).replace(/-/g, '')}`,
+    id: `att_${recordDate.replace(/-/g, '')}`,
     classId: targetClass,
-    date: date || new Date().toISOString().slice(0, 10),
+    date: recordDate,
     totalStudents: total,
     presentCount,
     absentCount,
     absentRolls: (absentRolls || []).sort((a, b) => a - b),
     markedBy: req.user.id || 'cr',
+    markedByName: authorName,
+    markedByRole: authorRole,
+    isLocked: true,
+    lastModifiedBy: isAdvisorOrAdmin && existing ? (req.user.name || 'Class Advisor') : (existing ? existing.lastModifiedBy : ''),
     status: 'submitted',
-    submittedAt: new Date().toISOString(),
+    submittedAt: existing && existing.submittedAt ? existing.submittedAt : new Date().toISOString(),
     notes: notes || ''
   };
 
@@ -231,18 +263,20 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
       : { rollNo: rNo, name: 'Unknown', enrollmentNo: '' };
   });
 
-  const formattedDate = (date || '').split('-').reverse().join('/');
+  const formattedDate = recordDate.split('-').reverse().join('/');
   const report = {
-    id: `rep_${(date || '').replace(/-/g, '')}`,
+    id: `rep_${recordDate.replace(/-/g, '')}`,
     classId: targetClass,
     date: formattedDate,
     totalStudents: total,
     presentCount,
     absentCount,
     absentStudents,
+    markedByName: authorName,
+    markedByRole: authorRole,
     submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     status: 'sent',
-    formattedText: `Attendance Report\n${targetClass}\nDate: ${formattedDate}\n\nTotal Students: ${total}\nPresent: ${presentCount}\nAbsent: ${absentCount}`
+    formattedText: `Attendance Report\n${targetClass}\nDate: ${formattedDate}\nMarked By: ${authorName} (${authorRole})\n\nTotal Students: ${total}\nPresent: ${presentCount}\nAbsent: ${absentCount}`
   };
 
   await db.saveReport(report);
@@ -274,8 +308,9 @@ app.get('/api/reports', async (req, res) => {
 });
 
 app.post('/api/reports/generate', async (req, res) => {
-  const { date, classId, absentRolls } = req.body;
-  const targetDate = date || '18/09/2026';
+  const { date, classId, absentRolls, markedByName, markedByRole } = req.body;
+  const targetDate = date || new Date().toISOString().slice(0, 10);
+  const formattedDate = targetDate.includes('-') ? targetDate.split('-').reverse().join('/') : targetDate;
   const cls = classId || 'I-MCA-A';
   const students = await db.getStudents(cls);
   const total = students.length || 52;
@@ -288,17 +323,20 @@ app.post('/api/reports/generate', async (req, res) => {
       : { rollNo: rNo, name: 'Unknown', enrollmentNo: '' };
   });
 
-  const text = `Attendance Report\n${cls}\nDate: ${targetDate}\n\nTotal Students: ${total}\nPresent: ${total - rolls.length}\nAbsent: ${rolls.length}\n\nAbsent Students:\n\n` +
+  const authorText = markedByName ? `Marked By: ${markedByName}${markedByRole ? ` (${markedByRole})` : ''}\n` : '';
+  const text = `Attendance Report\n${cls}\nDate: ${formattedDate}\n${authorText}\nTotal Students: ${total}\nPresent: ${total - rolls.length}\nAbsent: ${rolls.length}\n\nAbsent Students:\n\n` +
     absentStudents.map(s => `${s.rollNo}. ${s.name}\n    ${s.enrollmentNo}`).join('\n\n') +
     `\n\nGenerated via ClassCR 📱`;
 
   res.json({
-    date: targetDate,
+    date: formattedDate,
     className: cls,
     totalStudents: total,
     presentCount: total - rolls.length,
     absentCount: rolls.length,
     absentStudents,
+    markedByName,
+    markedByRole,
     formattedText: text
   });
 });
@@ -396,10 +434,15 @@ app.get('/api/admin/overview', async (req, res) => {
 // Advisor dashboard data
 app.get('/api/advisor/class', async (req, res) => {
   const classId = req.query.classId || 'I-MCA-A';
-  const todayRecord = await db.getAttendanceByDate(classId, '2026-09-18');
+  const queryDate = req.query.date || new Date().toISOString().slice(0, 10);
+  let todayRecord = await db.getAttendanceByDate(classId, queryDate);
+  if (!todayRecord && req.query.date === undefined) {
+    const history = await db.getAttendanceHistory(classId);
+    todayRecord = history[0] || null;
+  }
   const students = await db.getStudents(classId);
 
-  const absentRolls = todayRecord ? todayRecord.absentRolls : [13, 25, 27, 28, 31, 34, 37, 44, 52];
+  const absentRolls = todayRecord ? todayRecord.absentRolls : [];
   const absentees = absentRolls.map(rNo => {
     const s = students.find(st => st.rollNo === rNo);
     return s
@@ -407,16 +450,23 @@ app.get('/api/advisor/class', async (req, res) => {
       : { rollNo: rNo, name: 'Unknown', enrollmentNo: '' };
   });
 
+  const displayDate = (todayRecord ? todayRecord.date : queryDate).split('-').reverse().join('/');
+
   res.json({
     className: 'I MCA A',
     batch: '2026–2028',
     todayReport: {
-      date: '18/09/2026',
+      date: displayDate,
+      isoDate: todayRecord ? todayRecord.date : queryDate,
       total: students.length || 52,
       present: (students.length || 52) - absentRolls.length,
       absent: absentRolls.length,
-      crStatus: todayRecord ? 'Submitted' : 'Pending',
-      lastUpdated: '09:18 AM'
+      crStatus: todayRecord ? (todayRecord.status === 'submitted' ? 'Submitted' : todayRecord.status) : 'Pending',
+      lastUpdated: todayRecord ? (todayRecord.submittedAt || '09:18 AM') : 'Pending',
+      markedByName: todayRecord ? todayRecord.markedByName : '',
+      markedByRole: todayRecord ? todayRecord.markedByRole : '',
+      isLocked: todayRecord ? Boolean(todayRecord.isLocked) : false,
+      lastModifiedBy: todayRecord ? todayRecord.lastModifiedBy : ''
     },
     absentees
   });
