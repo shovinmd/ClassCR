@@ -153,25 +153,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           color: AppColors.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: const Text(
-                          'I MCA • Batch 2026–2028 (52 Students)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
