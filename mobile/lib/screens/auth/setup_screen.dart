@@ -35,12 +35,8 @@ class _SetupScreenState extends State<SetupScreen> {
   void initState() {
     super.initState();
     _advisorNameController = TextEditingController(text: widget.state.delegation.advisorName);
-    // Preselect default CR student: MUTHUVEL R (Roll 31)
-    try {
-      _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == widget.state.delegation.crRoll);
-    } catch (_) {
-      _selectedStudent = widget.state.students.first;
-    }
+    // No default selection: student must explicitly choose their name
+    _selectedStudent = null;
   }
 
   @override
@@ -374,6 +370,10 @@ class _SetupScreenState extends State<SetupScreen> {
                           child: DropdownButton<Student>(
                             isExpanded: true,
                             value: _selectedStudent,
+                            hint: const Text(
+                              '-- Tap to choose your name from roster --',
+                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
                             items: students.map((st) {
                               return DropdownMenuItem(
                                 value: st,
@@ -575,17 +575,7 @@ class _SetupScreenState extends State<SetupScreen> {
             _selectedRole = role;
             _codeController.clear(); // HIDE CODE: Never prefill with secret passcode!
             _errorMessage = '';
-            if (role == UserRole.assistantCr) {
-              try {
-                _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == widget.state.delegation.maleAsstRoll);
-              } catch (_) {}
-            } else if (role == UserRole.cr) {
-              try {
-                _selectedStudent = widget.state.students.firstWhere((s) => s.rollNo == widget.state.delegation.crRoll);
-              } catch (_) {}
-            } else if (role == UserRole.student) {
-              _selectedStudent ??= widget.state.students.first;
-            }
+            _selectedStudent = null; // No default student: must be explicitly chosen from roster
           });
         },
         child: Container(
