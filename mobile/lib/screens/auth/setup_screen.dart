@@ -369,13 +369,16 @@ class _SetupScreenState extends State<SetupScreen> {
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<Student>(
                             isExpanded: true,
-                            value: _selectedStudent,
+                            value: (_selectedStudent != null &&
+                                    students.any((s) => s.rollNo == _selectedStudent!.rollNo))
+                                ? students.firstWhere((s) => s.rollNo == _selectedStudent!.rollNo)
+                                : null,
                             hint: const Text(
                               '-- Tap to choose your name from roster --',
                               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                             ),
                             items: students.map((st) {
-                              return DropdownMenuItem(
+                              return DropdownMenuItem<Student>(
                                 value: st,
                                 child: Text(
                                   '#${st.rollNo.toString().padLeft(2, '0')} ${st.name} (${st.enrollmentNo})',

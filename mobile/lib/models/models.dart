@@ -98,6 +98,17 @@ class Student {
     'classId': classId,
     'department': department,
   };
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Student &&
+          runtimeType == other.runtimeType &&
+          rollNo == other.rollNo &&
+          enrollmentNo == other.enrollmentNo;
+
+  @override
+  int get hashCode => rollNo.hashCode ^ enrollmentNo.hashCode;
 }
 
 class AttendanceRecord {
