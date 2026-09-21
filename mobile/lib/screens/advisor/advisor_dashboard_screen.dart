@@ -18,11 +18,9 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
   bool _showStudentList = false;
 
   int? _selectedCrRoll;
-  int? _selectedMaleAsstRoll;
-  int? _selectedFemaleAsstRoll;
+  int? _selectedAsstRoll;
   late final TextEditingController _crCodeCtrl;
-  late final TextEditingController _maleAsstCodeCtrl;
-  late final TextEditingController _femaleAsstCodeCtrl;
+  late final TextEditingController _asstCodeCtrl;
   late final TextEditingController _studentCodeCtrl;
   bool _isSavingDelegation = false;
 
@@ -31,19 +29,16 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
     super.initState();
     final del = widget.state.delegation;
     _selectedCrRoll = del.crRoll;
-    _selectedMaleAsstRoll = del.maleAsstRoll;
-    _selectedFemaleAsstRoll = del.femaleAsstRoll;
+    _selectedAsstRoll = del.asstRoll;
     _crCodeCtrl = TextEditingController(text: del.crCode ?? '');
-    _maleAsstCodeCtrl = TextEditingController(text: del.maleAsstCode ?? '');
-    _femaleAsstCodeCtrl = TextEditingController(text: del.femaleAsstCode ?? '');
+    _asstCodeCtrl = TextEditingController(text: del.asstCode ?? '');
     _studentCodeCtrl = TextEditingController(text: del.studentCode);
   }
 
   @override
   void dispose() {
     _crCodeCtrl.dispose();
-    _maleAsstCodeCtrl.dispose();
-    _femaleAsstCodeCtrl.dispose();
+    _asstCodeCtrl.dispose();
     _studentCodeCtrl.dispose();
     super.dispose();
   }
@@ -57,30 +52,27 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
             orElse: () => null,
           )
         : null;
-    final maleAsst = _selectedMaleAsstRoll != null
+    final asstStudent = _selectedAsstRoll != null
         ? widget.state.students.cast<Student?>().firstWhere(
-            (s) => s?.rollNo == _selectedMaleAsstRoll,
+            (s) => s?.rollNo == _selectedAsstRoll,
             orElse: () => null,
           )
         : null;
-    final femaleAsst = _selectedFemaleAsstRoll != null
-        ? widget.state.students.cast<Student?>().firstWhere(
-            (s) => s?.rollNo == _selectedFemaleAsstRoll,
-            orElse: () => null,
-          )
-        : null;
+
+    final asstCode = _asstCodeCtrl.text.trim();
+    final isFemale = asstStudent?.isFemale ?? false;
 
     await widget.state.advisorDelegate(
       classId: 'I-MCA-A',
       crRoll: _selectedCrRoll,
       crName: crStudent?.name,
       crCode: _crCodeCtrl.text.trim(),
-      maleAsstRoll: _selectedMaleAsstRoll,
-      maleAsstName: maleAsst?.name,
-      maleAsstCode: _maleAsstCodeCtrl.text.trim(),
-      femaleAsstRoll: _selectedFemaleAsstRoll,
-      femaleAsstName: femaleAsst?.name,
-      femaleAsstCode: _femaleAsstCodeCtrl.text.trim(),
+      maleAsstRoll: (!isFemale && asstStudent != null) ? _selectedAsstRoll : null,
+      maleAsstName: (!isFemale && asstStudent != null) ? asstStudent.name : null,
+      maleAsstCode: (!isFemale && asstStudent != null) ? asstCode : null,
+      femaleAsstRoll: (isFemale && asstStudent != null) ? _selectedAsstRoll : null,
+      femaleAsstName: (isFemale && asstStudent != null) ? asstStudent.name : null,
+      femaleAsstCode: (isFemale && asstStudent != null) ? asstCode : null,
       studentCode: _studentCodeCtrl.text.trim(),
     );
 
@@ -89,8 +81,7 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
     if (mounted) {
       final appointedDesc = [
         if (crStudent != null) 'CR: ${crStudent.name}',
-        if (maleAsst != null) 'Asst CR: ${maleAsst.name}',
-        if (femaleAsst != null) 'Asst CR: ${femaleAsst.name}',
+        if (asstStudent != null) 'Asst CR: ${asstStudent.name} (${isFemale ? "Girl" : "Boy"})',
       ].join(', ');
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -534,12 +525,8 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                           (s) => s?.rollNo == _selectedCrRoll,
                           orElse: () => null,
                         );
-                        final selectedMaleAsstStudent = widget.state.students.cast<Student?>().firstWhere(
-                          (s) => s?.rollNo == _selectedMaleAsstRoll,
-                          orElse: () => null,
-                        );
-                        final selectedFemaleAsstStudent = widget.state.students.cast<Student?>().firstWhere(
-                          (s) => s?.rollNo == _selectedFemaleAsstRoll,
+                        final selectedAsstStudent = widget.state.students.cast<Student?>().firstWhere(
+                          (s) => s?.rollNo == _selectedAsstRoll,
                           orElse: () => null,
                         );
 
@@ -637,21 +624,28 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
 
                             const Divider(height: 28),
 
-                            // 2. ASSISTANT CR 1
+                            // 2. ASSISTANT CLASS REPRESENTATIVE (COMBINED SINGLE ASST. CR)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('2. Assistant CR (Section Coordinator 1):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0369A1))),
-                                if (selectedMaleAsstStudent != null)
+                                const Text(
+                                  '2. Assistant CR (Asst. CR):',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0369A1)),
+                                ),
+                                if (selectedAsstStudent != null)
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF0284C7).withOpacity(0.12),
+                                      color: (selectedAsstStudent.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7)).withOpacity(0.12),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
-                                      selectedMaleAsstStudent.name,
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
+                                      '${selectedAsstStudent.name} (${selectedAsstStudent.isFemale ? "Girl" : "Boy"})',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: selectedAsstStudent.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                      ),
                                     ),
                                   ),
                               ],
@@ -660,51 +654,89 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF0F9FF),
+                                color: selectedAsstStudent == null
+                                    ? const Color(0xFFF8FAFC)
+                                    : (selectedAsstStudent.isFemale ? const Color(0xFFFDF2F8) : const Color(0xFFF0F9FF)),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFBAE6FD)),
+                                border: Border.all(
+                                  color: selectedAsstStudent == null
+                                      ? AppColors.cardBorder
+                                      : (selectedAsstStudent.isFemale ? const Color(0xFFFBCFE8) : const Color(0xFFBAE6FD)),
+                                ),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<int>(
-                                  value: (_selectedMaleAsstRoll != null && widget.state.students.where((s) => s.isMale).any((s) => s.rollNo == _selectedMaleAsstRoll))
-                                      ? _selectedMaleAsstRoll
+                                  value: (_selectedAsstRoll != null && widget.state.students.any((s) => s.rollNo == _selectedAsstRoll))
+                                      ? _selectedAsstRoll
                                       : null,
-                                  hint: const Text('-- Tap to appoint Asst. CR from roster --', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                                  hint: const Text(
+                                    '-- Tap to appoint Asst. CR from roster (Boy or Girl) --',
+                                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                  ),
                                   isExpanded: true,
-                                  items: widget.state.students.where((s) => s.isMale).map((s) {
+                                  items: widget.state.students.map((s) {
                                     return DropdownMenuItem<int>(
                                       value: s.rollNo,
-                                      child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            s.isFemale ? Icons.female : Icons.male,
+                                            size: 16,
+                                            color: s.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              '#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.isFemale ? "Girl" : "Boy"})',
+                                              style: const TextStyle(fontSize: 13),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     );
                                   }).toList(),
-                                  onChanged: (val) => setState(() => _selectedMaleAsstRoll = val),
+                                  onChanged: (val) => setState(() => _selectedAsstRoll = val),
                                 ),
                               ),
                             ),
-                            if (selectedMaleAsstStudent != null) ...[
+                            if (selectedAsstStudent != null) ...[
                               const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF0F9FF),
+                                  color: selectedAsstStudent.isFemale ? const Color(0xFFFDF2F8) : const Color(0xFFF0F9FF),
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFBAE6FD)),
+                                  border: Border.all(
+                                    color: selectedAsstStudent.isFemale ? const Color(0xFFFBCFE8) : const Color(0xFFBAE6FD),
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.assignment_ind, color: Color(0xFF0284C7), size: 20),
+                                    Icon(
+                                      selectedAsstStudent.isFemale ? Icons.female : Icons.male,
+                                      color: selectedAsstStudent.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                      size: 22,
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            'Appointed Asst. CR: ${selectedMaleAsstStudent.name}',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0C4A6E)),
+                                            'Appointed Asst. CR: ${selectedAsstStudent.name}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              color: selectedAsstStudent.isFemale ? const Color(0xFF831843) : const Color(0xFF0C4A6E),
+                                            ),
                                           ),
                                           Text(
-                                            'Roll #${selectedMaleAsstStudent.rollNo} • Enrollment: ${selectedMaleAsstStudent.enrollmentNo} • Code: ${selectedMaleAsstStudent.code}',
-                                            style: const TextStyle(fontSize: 11, color: Color(0xFF0369A1)),
+                                            '${selectedAsstStudent.isFemale ? "Female (Girl)" : "Male (Boy)"} Coordinator • Roll #${selectedAsstStudent.rollNo} • Enrollment: ${selectedAsstStudent.enrollmentNo}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: selectedAsstStudent.isFemale ? const Color(0xFFBE185D) : const Color(0xFF0369A1),
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -715,104 +747,17 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                             ],
                             const SizedBox(height: 8),
                             TextField(
-                              controller: _maleAsstCodeCtrl,
+                              controller: _asstCodeCtrl,
                               textCapitalization: TextCapitalization.characters,
-                              decoration: const InputDecoration(
-                                labelText: 'Asst. CR Passcode',
+                              decoration: InputDecoration(
+                                labelText: 'Assistant CR Passcode',
                                 hintText: 'e.g. ACR2026',
-                                prefixIcon: Icon(Icons.how_to_reg, color: Color(0xFF0284C7), size: 18),
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                              ),
-                            ),
-
-                            const Divider(height: 28),
-
-                            // 3. ASSISTANT CR 2
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('3. Assistant CR (Section Coordinator 2):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFBE185D))),
-                                if (selectedFemaleAsstStudent != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDB2777).withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      selectedFemaleAsstStudent.name,
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDB2777)),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFDF2F8),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFFBCFE8)),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
-                                  value: (_selectedFemaleAsstRoll != null && widget.state.students.where((s) => s.isFemale).any((s) => s.rollNo == _selectedFemaleAsstRoll))
-                                      ? _selectedFemaleAsstRoll
-                                      : null,
-                                  hint: const Text('-- Tap to appoint Asst. CR from roster --', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                                  isExpanded: true,
-                                  items: widget.state.students.where((s) => s.isFemale).map((s) {
-                                    return DropdownMenuItem<int>(
-                                      value: s.rollNo,
-                                      child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) => setState(() => _selectedFemaleAsstRoll = val),
+                                prefixIcon: Icon(
+                                  Icons.how_to_reg,
+                                  color: selectedAsstStudent?.isFemale == true ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                  size: 18,
                                 ),
-                              ),
-                            ),
-                            if (selectedFemaleAsstStudent != null) ...[
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFDF2F8),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFFBCFE8)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.assignment_ind, color: Color(0xFFDB2777), size: 20),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Appointed Asst. CR: ${selectedFemaleAsstStudent.name}',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF831843)),
-                                          ),
-                                          Text(
-                                            'Roll #${selectedFemaleAsstStudent.rollNo} • Enrollment: ${selectedFemaleAsstStudent.enrollmentNo} • Code: ${selectedFemaleAsstStudent.code}',
-                                            style: const TextStyle(fontSize: 11, color: Color(0xFFBE185D)),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _femaleAsstCodeCtrl,
-                              textCapitalization: TextCapitalization.characters,
-                              decoration: const InputDecoration(
-                                labelText: 'Asst. CR Passcode (Section 2)',
-                                hintText: 'e.g. ACR2026',
-                                prefixIcon: Icon(Icons.how_to_reg, color: Color(0xFFDB2777), size: 18),
-                                border: OutlineInputBorder(),
+                                border: const OutlineInputBorder(),
                                 isDense: true,
                               ),
                             ),

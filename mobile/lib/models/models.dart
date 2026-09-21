@@ -307,6 +307,10 @@ class ClassDelegation {
 
   bool get isAsstCrAppointed => isMaleAsstAppointed || isFemaleAsstAppointed;
 
+  int? get asstRoll => femaleAsstRoll ?? maleAsstRoll;
+  String? get asstName => femaleAsstName ?? maleAsstName;
+  String? get asstCode => femaleAsstCode ?? maleAsstCode;
+
   factory ClassDelegation.fromJson(Map<String, dynamic> json) {
     return ClassDelegation(
       classId: json['classId']?.toString() ?? 'I-MCA-A',

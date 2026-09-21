@@ -756,7 +756,7 @@ class _SetupScreenState extends State<SetupScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Appointed Assistant CRs:\n${[if (widget.state.delegation.isFemaleAsstAppointed) "• ${widget.state.delegation.femaleAsstName} (Roll #${widget.state.delegation.femaleAsstRoll})", if (widget.state.delegation.isMaleAsstAppointed) "• ${widget.state.delegation.maleAsstName} (Roll #${widget.state.delegation.maleAsstRoll})"].join("\n")}',
+                                    'Appointed Assistant CR:\n• ${widget.state.delegation.asstName ?? "Appointed Student"} (Roll #${widget.state.delegation.asstRoll ?? "N/A"})',
                                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
                                   ),
                                 ),
