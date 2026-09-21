@@ -80,13 +80,13 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
 
     if (mounted) {
       final appointedDesc = [
-        if (crStudent != null) 'CR: ${crStudent.name}',
-        if (asstStudent != null) 'Asst CR: ${asstStudent.name} (${isFemale ? "Girl" : "Boy"})',
+        if (crStudent != null) 'CR: ${crStudent.name}' else 'CR: None (Unassigned)',
+        if (asstStudent != null) 'Asst CR: ${asstStudent.name} (${isFemale ? "Girl" : "Boy"})' else 'Asst CR: None (Unassigned)',
       ].join(', ');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Appointed representatives ($appointedDesc)! Passcodes updated in backend.'),
+          content: Text('✅ Representatives updated ($appointedDesc)! Delegation saved.'),
           backgroundColor: AppColors.presentGreen,
         ),
       );
@@ -549,6 +549,18 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                                       selectedCrStudent.name,
                                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                                     ),
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFEE2E2),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'None (Unassigned)',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.absentRed),
+                                    ),
                                   ),
                               ],
                             ),
@@ -561,18 +573,33 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                                 border: Border.all(color: AppColors.cardBorder),
                               ),
                               child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
+                                child: DropdownButton<int?>(
                                   value: (_selectedCrRoll != null && widget.state.students.any((s) => s.rollNo == _selectedCrRoll))
                                       ? _selectedCrRoll
                                       : null,
-                                  hint: const Text('-- Tap to appoint CR from roster --', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                                  hint: const Text('-- Tap to appoint CR or select None --', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                                   isExpanded: true,
-                                  items: widget.state.students.map((s) {
-                                    return DropdownMenuItem<int>(
-                                      value: s.rollNo,
-                                      child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
-                                    );
-                                  }).toList(),
+                                  items: [
+                                    const DropdownMenuItem<int?>(
+                                      value: null,
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.remove_circle_outline, color: AppColors.absentRed, size: 16),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            '🚫 None (Remove / Unassign CR)',
+                                            style: TextStyle(fontSize: 13, color: AppColors.absentRed, fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ...widget.state.students.map((s) {
+                                      return DropdownMenuItem<int?>(
+                                        value: s.rollNo,
+                                        child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
+                                      );
+                                    }),
+                                  ],
                                   onChanged: (val) => setState(() => _selectedCrRoll = val),
                                 ),
                               ),
@@ -586,23 +613,58 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(color: const Color(0xFFBFDBFE)),
                                 ),
-                                child: Row(
+                                child: Column(
                                   children: [
-                                    const Icon(Icons.badge, color: AppColors.primary, size: 20),
-                                    const SizedBox(width: 10),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.badge, color: AppColors.primary, size: 20),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Appointed CR: ${selectedCrStudent.name}',
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.deepBlue),
+                                              ),
+                                              Text(
+                                                'Roll #${selectedCrStudent.rollNo} • Enrollment: ${selectedCrStudent.enrollmentNo} • Code: ${selectedCrStudent.code}',
+                                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton.icon(
+                                        onPressed: () => setState(() => _selectedCrRoll = null),
+                                        icon: const Icon(Icons.close, size: 14, color: AppColors.absentRed),
+                                        label: const Text('Remove CR (Set to None)', style: TextStyle(fontSize: 11, color: AppColors.absentRed, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFECACA)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.person_off_outlined, color: AppColors.absentRed, size: 18),
+                                    SizedBox(width: 8),
                                     Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Appointed CR: ${selectedCrStudent.name}',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.deepBlue),
-                                          ),
-                                          Text(
-                                            'Roll #${selectedCrStudent.rollNo} • Enrollment: ${selectedCrStudent.enrollmentNo} • Code: ${selectedCrStudent.code}',
-                                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                          ),
-                                        ],
+                                      child: Text(
+                                        'CR Status: None (Unassigned). CR role cannot be accessed until appointed.',
+                                        style: TextStyle(fontSize: 11, color: Color(0xFF991B1B), fontWeight: FontWeight.w600),
                                       ),
                                     ),
                                   ],
@@ -647,6 +709,18 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                                         color: selectedAsstStudent.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
                                       ),
                                     ),
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFEE2E2),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'None (Unassigned)',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.absentRed),
+                                    ),
                                   ),
                               ],
                             ),
@@ -665,37 +739,52 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                                 ),
                               ),
                               child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
+                                child: DropdownButton<int?>(
                                   value: (_selectedAsstRoll != null && widget.state.students.any((s) => s.rollNo == _selectedAsstRoll))
                                       ? _selectedAsstRoll
                                       : null,
                                   hint: const Text(
-                                    '-- Tap to appoint Asst. CR from roster (Boy or Girl) --',
+                                    '-- Tap to appoint Asst. CR or select None --',
                                     style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                                   ),
                                   isExpanded: true,
-                                  items: widget.state.students.map((s) {
-                                    return DropdownMenuItem<int>(
-                                      value: s.rollNo,
+                                  items: [
+                                    const DropdownMenuItem<int?>(
+                                      value: null,
                                       child: Row(
                                         children: [
-                                          Icon(
-                                            s.isFemale ? Icons.female : Icons.male,
-                                            size: 16,
-                                            color: s.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              '#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.isFemale ? "Girl" : "Boy"})',
-                                              style: const TextStyle(fontSize: 13),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
+                                          Icon(Icons.remove_circle_outline, color: AppColors.absentRed, size: 16),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            '🚫 None (Remove / Unassign Asst. CR)',
+                                            style: TextStyle(fontSize: 13, color: AppColors.absentRed, fontWeight: FontWeight.bold),
                                           ),
                                         ],
                                       ),
-                                    );
-                                  }).toList(),
+                                    ),
+                                    ...widget.state.students.map((s) {
+                                      return DropdownMenuItem<int?>(
+                                        value: s.rollNo,
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              s.isFemale ? Icons.female : Icons.male,
+                                              size: 16,
+                                              color: s.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                '#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.isFemale ? "Girl" : "Boy"})',
+                                                style: const TextStyle(fontSize: 13),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                  ],
                                   onChanged: (val) => setState(() => _selectedAsstRoll = val),
                                 ),
                               ),
@@ -711,34 +800,69 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                                     color: selectedAsstStudent.isFemale ? const Color(0xFFFBCFE8) : const Color(0xFFBAE6FD),
                                   ),
                                 ),
-                                child: Row(
+                                child: Column(
                                   children: [
-                                    Icon(
-                                      selectedAsstStudent.isFemale ? Icons.female : Icons.male,
-                                      color: selectedAsstStudent.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
-                                      size: 22,
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          selectedAsstStudent.isFemale ? Icons.female : Icons.male,
+                                          color: selectedAsstStudent.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                          size: 22,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Appointed Asst. CR: ${selectedAsstStudent.name}',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                  color: selectedAsstStudent.isFemale ? const Color(0xFF831843) : const Color(0xFF0C4A6E),
+                                                ),
+                                              ),
+                                              Text(
+                                                '${selectedAsstStudent.isFemale ? "Female (Girl)" : "Male (Boy)"} Coordinator • Roll #${selectedAsstStudent.rollNo} • Enrollment: ${selectedAsstStudent.enrollmentNo}',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: selectedAsstStudent.isFemale ? const Color(0xFFBE185D) : const Color(0xFF0369A1),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 10),
+                                    const SizedBox(height: 4),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton.icon(
+                                        onPressed: () => setState(() => _selectedAsstRoll = null),
+                                        icon: const Icon(Icons.close, size: 14, color: AppColors.absentRed),
+                                        label: const Text('Remove Asst. CR (Set to None)', style: TextStyle(fontSize: 11, color: AppColors.absentRed, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFECACA)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.person_off_outlined, color: AppColors.absentRed, size: 18),
+                                    SizedBox(width: 8),
                                     Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Appointed Asst. CR: ${selectedAsstStudent.name}',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13,
-                                              color: selectedAsstStudent.isFemale ? const Color(0xFF831843) : const Color(0xFF0C4A6E),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${selectedAsstStudent.isFemale ? "Female (Girl)" : "Male (Boy)"} Coordinator • Roll #${selectedAsstStudent.rollNo} • Enrollment: ${selectedAsstStudent.enrollmentNo}',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: selectedAsstStudent.isFemale ? const Color(0xFFBE185D) : const Color(0xFF0369A1),
-                                            ),
-                                          ),
-                                        ],
+                                      child: Text(
+                                        'Asst. CR Status: None (Unassigned). Assistant CR role cannot be accessed until appointed.',
+                                        style: TextStyle(fontSize: 11, color: Color(0xFF991B1B), fontWeight: FontWeight.w600),
                                       ),
                                     ),
                                   ],

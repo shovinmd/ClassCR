@@ -195,8 +195,8 @@ ON CONFLICT (roll_no) DO UPDATE SET
   class_id = EXCLUDED.class_id,
   department = EXCLUDED.department;
 
--- 6. Seed Initial Attendance Record
-INSERT INTO public.attendance_records (id, class_id, date, total_students, present_count, absent_count, absent_rolls, marked_by, status, notes)
-VALUES
-  ('att_20260918', 'I-MCA-A', '2026-09-18', 52, 43, 9, '[13, 25, 27, 28, 31, 34, 37, 44, 52]'::jsonb, 'user_cr_1', 'submitted', 'Morning session attendance verified and submitted to advisor.')
-ON CONFLICT (id) DO NOTHING;
+-- 6. Clean Database for Production (Ready for fresh, real attendance data only)
+-- No past dummy attendance records are added.
+TRUNCATE TABLE public.attendance_records CASCADE;
+TRUNCATE TABLE public.reports CASCADE;
+

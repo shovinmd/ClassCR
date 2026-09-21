@@ -290,6 +290,13 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
   res.json({ success: true, attendance: newRecord, report });
 });
 
+// Clear Attendance Database (Ready for fresh live data)
+app.post('/api/attendance/clear', async (req, res) => {
+  const classId = req.body?.classId;
+  await db.clearAllAttendanceRecords(classId);
+  res.json({ success: true, message: `Database cleared. Ready to record fresh live attendance.` });
+});
+
 // Offline Sync batch endpoint
 app.post('/api/sync', authenticateToken, async (req, res) => {
   const { batch } = req.body;

@@ -97,102 +97,10 @@ function mapReport(row) {
   };
 }
 
-// In-memory cache / fallback store for when Supabase tables are being initialized
+// In-memory cache / fallback store (100% clean and ready for real production data)
 const memoryStore = {
-  attendanceRecords: [
-    {
-      id: 'att_20260914',
-      classId: 'I-MCA-A',
-      date: '2026-09-14',
-      totalStudents: 52,
-      presentCount: 47,
-      absentCount: 5,
-      absentRolls: [8, 17, 24, 38, 49],
-      markedBy: 'user_cr_1',
-      status: 'submitted',
-      submittedAt: '2026-09-14T09:12:00Z',
-      notes: 'Regular lecture day. 5 absent with prior notice.'
-    },
-    {
-      id: 'att_20260915',
-      classId: 'I-MCA-A',
-      date: '2026-09-15',
-      totalStudents: 52,
-      presentCount: 50,
-      absentCount: 2,
-      absentRolls: [13, 44],
-      markedBy: 'user_cr_1',
-      status: 'submitted',
-      submittedAt: '2026-09-15T09:15:00Z',
-      notes: 'Lab session conducted.'
-    },
-    {
-      id: 'att_20260916',
-      classId: 'I-MCA-A',
-      date: '2026-09-16',
-      totalStudents: 52,
-      presentCount: 45,
-      absentCount: 7,
-      absentRolls: [2, 11, 21, 28, 33, 40, 51],
-      markedBy: 'user_cr_1',
-      status: 'submitted',
-      submittedAt: '2026-09-16T09:20:00Z',
-      notes: 'Campus placement orientation overlap.'
-    },
-    {
-      id: 'att_20260917',
-      classId: 'I-MCA-A',
-      date: '2026-09-17',
-      totalStudents: 52,
-      presentCount: 48,
-      absentCount: 4,
-      absentRolls: [6, 18, 26, 35],
-      markedBy: 'user_cr_1',
-      status: 'submitted',
-      submittedAt: '2026-09-17T09:10:00Z',
-      notes: 'Full day classes.'
-    },
-    {
-      id: `att_${new Date().toISOString().split('T')[0].replace(/-/g, '')}`,
-      classId: 'I-MCA-A',
-      date: new Date().toISOString().split('T')[0],
-      totalStudents: 52,
-      presentCount: 43,
-      absentCount: 9,
-      absentRolls: [13, 25, 27, 28, 31, 34, 37, 44, 52],
-      markedBy: 'user_cr_1',
-      markedByName: 'MUTHUVEL R',
-      markedByRole: 'CR',
-      isLocked: true,
-      lastModifiedBy: '',
-      status: 'submitted',
-      submittedAt: '09:18 AM',
-      notes: 'Morning session attendance verified and submitted to advisor.'
-    }
-  ],
-  reports: [
-    {
-      id: `rep_${new Date().toISOString().split('T')[0].replace(/-/g, '')}`,
-      classId: 'I-MCA-A',
-      date: `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`,
-      totalStudents: 52,
-      presentCount: 43,
-      absentCount: 9,
-      absentStudents: [
-        { rollNo: 13, name: 'DHIVYALAKSHMI H', enrollmentNo: '260311' },
-        { rollNo: 25, name: 'LOKESH V', enrollmentNo: '260364' },
-        { rollNo: 27, name: 'MAHESH KUMAR R', enrollmentNo: '260367' },
-        { rollNo: 28, name: 'MANIKANDAN D', enrollmentNo: '260345' },
-        { rollNo: 31, name: 'MUTHUVEL R', enrollmentNo: '260320' },
-        { rollNo: 34, name: 'NETHAJI V', enrollmentNo: '260333' },
-        { rollNo: 37, name: 'PRITHEEVIRAJ S', enrollmentNo: '260405' },
-        { rollNo: 44, name: 'SATHYA P', enrollmentNo: '260368' },
-        { rollNo: 52, name: 'TASFIYA FARVIN S', enrollmentNo: '260738' }
-      ],
-      submittedAt: '09:18 AM',
-      status: 'sent'
-    }
-  ]
+  attendanceRecords: [],
+  reports: []
 };
 
 // Database Operations
@@ -416,6 +324,33 @@ const db = {
       console.warn('Supabase save report notice:', err.message);
     }
     return report;
+  },
+
+  // Clear all attendance records & reports to ensure 100% clean state for real production data
+  async clearAllAttendanceRecords(classId) {
+    if (classId) {
+      memoryStore.attendanceRecords = memoryStore.attendanceRecords.filter(r => r.classId !== classId);
+      memoryStore.reports = memoryStore.reports.filter(r => r.classId !== classId);
+    } else {
+      memoryStore.attendanceRecords = [];
+      memoryStore.reports = [];
+    }
+
+    try {
+      let query = supabase.from('attendance_records').delete();
+      if (classId) query = query.eq('class_id', classId);
+      else query = query.neq('id', 'NONE');
+      await query;
+
+      let repQuery = supabase.from('reports').delete();
+      if (classId) repQuery = repQuery.eq('class_id', classId);
+      else repQuery = repQuery.neq('id', 'NONE');
+      await repQuery;
+      console.log(`🧹 Cleared attendance & reports in Supabase for ${classId || 'all classes'}`);
+    } catch (e) {
+      console.warn('Could not clear Supabase tables:', e.message);
+    }
+    return true;
   },
 
   // Find user by email
