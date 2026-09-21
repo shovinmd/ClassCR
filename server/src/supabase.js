@@ -556,7 +556,7 @@ const db = {
     return cur;
   },
 
-  async verifyPasscode({ classId = 'I-MCA-A', role, code, gender, rollNo }) {
+  async verifyPasscode({ classId = 'I-MCA-A', role, code, gender, rollNo, staffName }) {
     const del = await this.getDelegation(classId);
     const entered = (code || '').trim().toUpperCase();
 
@@ -581,15 +581,62 @@ const db = {
         };
       }
     } else if (role === 'staff') {
-      const match = entered === 'STAFF2026' || entered === 'ADV2026' || entered === 'NAVI2026' || entered === 'TEACH2026';
-      if (match) {
+      const teacherCodes = {
+        'Mrs. V. Nandhini, AP/CA': ['OOPS2026', 'NAVI2026', 'ADV2026', '25PMCT12', '25PMCP11', 'STAFF2026'],
+        'Dr. S. Sivaramakrishnan, Prof/Maths': ['MAT2026', 'SIVA2026', '25PMCT11', 'STAFF2026'],
+        'Mrs. K. Shivashankari, AP/CA': ['DT2026', 'SHIVA2026', '25PMCT13', '25PMCP12', 'STAFF2026'],
+        'Ms. M. Tamilmani, AP/CA': ['OS2026', 'TAMIL2026', '25PMCT14', '25PMCP13', 'STAFF2026'],
+        'Ms. V. Deepa, AP/CA': ['SE2026', 'DEEPA2026', '25PMCT15', 'STAFF2026']
+      };
+
+      let matchedFaculty = null;
+      if (staffName) {
+        matchedFaculty = this.facultyList.find(f => f.name.toLowerCase().includes(staffName.toLowerCase()));
+      }
+
+      if (!matchedFaculty) {
+        for (const [fName, codes] of Object.entries(teacherCodes)) {
+          if (codes.includes(entered)) {
+            matchedFaculty = this.facultyList.find(f => f.name === fName);
+            break;
+          }
+        }
+      }
+
+      if (matchedFaculty) {
+        const allowed = teacherCodes[matchedFaculty.name] || ['STAFF2026'];
+        if (allowed.includes(entered) || entered === 'STAFF2026' || entered === 'ADV2026') {
+          return {
+            valid: true,
+            role: 'staff',
+            name: matchedFaculty.name,
+            subject: matchedFaculty.subject,
+            code: matchedFaculty.code,
+            classId
+          };
+        } else {
+          return {
+            valid: false,
+            error: `Invalid passcode for ${matchedFaculty.name}. Assigned code: ${allowed[0]} or STAFF2026.`
+          };
+        }
+      }
+
+      const generalMatch = entered === 'STAFF2026' || entered === 'ADV2026' || entered === 'NAVI2026' || entered === 'TEACH2026';
+      if (generalMatch) {
         return {
           valid: true,
-          name: 'Subject Teacher / Faculty',
           role: 'staff',
+          name: 'Ms. M. Tamilmani, AP/CA',
+          subject: 'Operating Systems & Lab',
+          code: '25PMCT14 / 25PMCP13',
           classId
         };
       }
+      return {
+        valid: false,
+        error: 'Invalid staff passcode. Please enter your teacher code (e.g. OS2026, MAT2026, DT2026, SE2026) or STAFF2026.'
+      };
     } else if (role === 'cr') {
       if (!del.crRoll || !del.crCode) {
         return { valid: false, error: 'No Class Representative has been appointed by the Class Advisor yet.' };

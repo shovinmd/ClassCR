@@ -504,8 +504,8 @@ app.post('/api/advisor/delegate', async (req, res) => {
 });
 
 app.post('/api/auth/verify-code', async (req, res) => {
-  const { classId, role, code, gender, rollNo } = req.body;
-  const result = await db.verifyPasscode({ classId, role, code, gender, rollNo });
+  const { classId, role, code, gender, rollNo, staffName } = req.body;
+  const result = await db.verifyPasscode({ classId, role, code, gender, rollNo, staffName });
   if (!result.valid) {
     return res.status(401).json(result);
   }

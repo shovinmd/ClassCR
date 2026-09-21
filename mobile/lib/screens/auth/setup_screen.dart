@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../data/mca_faculty.dart';
 import '../../models/models.dart';
 import '../../providers/classcr_state.dart';
 import '../main_shell.dart';
@@ -22,8 +23,9 @@ class _SetupScreenState extends State<SetupScreen> {
   // Step 2: Role Selection
   UserRole _selectedRole = UserRole.cr;
 
-  // Step 3: Student / Advisor Selection
+  // Step 3: Student / Advisor / Staff Selection
   Student? _selectedStudent;
+  FacultyMember? _selectedFaculty;
   late final TextEditingController _advisorNameController;
   final TextEditingController _searchStudentController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
@@ -38,6 +40,17 @@ class _SetupScreenState extends State<SetupScreen> {
     _advisorNameController = TextEditingController(text: widget.state.delegation.advisorName);
     // No default selection: student must explicitly choose their name
     _selectedStudent = null;
+    _selectedFaculty = kOfficialMcaFaculty[3]; // Default: Ms. M. Tamilmani (OS)
+  }
+
+  String _getFacultyDefaultPasscode(FacultyMember f) {
+    final abb = f.subjectAbb?.toUpperCase() ?? '';
+    if (abb.contains('OOPS')) return 'OOPS2026';
+    if (abb.contains('MAT')) return 'MAT2026';
+    if (abb.contains('DT')) return 'DT2026';
+    if (abb.contains('OS')) return 'OS2026';
+    if (abb.contains('SE')) return 'SE2026';
+    return 'STAFF2026';
   }
 
   @override
@@ -123,7 +136,59 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
-    // 2. Universal code verification (auto-detect HOD, Staff, Advisor, or Student view-only)
+    // 2. For Staff (Subject Teacher / Faculty): STRICT FACULTY PROFILE & SUBJECT CODE VERIFICATION
+    if (_selectedRole == UserRole.staff) {
+      if (_selectedFaculty == null) {
+        setState(() {
+          _errorMessage = 'Please select your faculty profile from the staff section first';
+          _isVerifying = false;
+        });
+        return;
+      }
+
+      final verification = await widget.state.verifyRolePasscode(
+        classId: 'I-MCA-A',
+        role: _selectedRole,
+        code: enteredCode,
+        staffName: _selectedFaculty!.name,
+      );
+
+      if (verification['valid'] != true) {
+        setState(() {
+          _errorMessage = verification['error']?.toString() ??
+              'Invalid passcode for ${_selectedFaculty!.name}.';
+          _isVerifying = false;
+        });
+        return;
+      }
+
+      final userName = _selectedFaculty!.name;
+      final classId = '$_selectedClass-$_selectedSection';
+
+      await widget.state.completeSetup(
+        role: _selectedRole,
+        name: userName,
+        classId: classId,
+        subject: _selectedFaculty!.subject,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.presentGreen,
+            content: Text('Verified as Faculty! Welcome $userName (${_selectedFaculty!.subjectAbb ?? ""}).'),
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainShell(state: widget.state)),
+        );
+      }
+      return;
+    }
+
+    // 3. Universal code verification (auto-detect HOD or Advisor)
     final universal = widget.state.verifyAnyCode(enteredCode);
     if (universal['valid'] == true) {
       final role = universal['role'] as UserRole;
@@ -343,7 +408,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
               const SizedBox(height: 20),
 
-              // STEP 2: ROLE SELECTION (CR, Asst. CR, Advisor, Student, Admin)
+              // STEP 2: ROLE SELECTION (CR, Asst. CR, Advisor, Staff, Student, HOD)
               _buildSectionHeader('2', 'Select Your Role'),
               const SizedBox(height: 10),
               Row(
@@ -374,6 +439,13 @@ class _SetupScreenState extends State<SetupScreen> {
               Row(
                 children: [
                   _buildRoleCard(
+                    role: UserRole.staff,
+                    title: 'Staff',
+                    subtitle: 'Faculty',
+                    icon: Icons.menu_book_outlined,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildRoleCard(
                     role: UserRole.student,
                     title: 'Student',
                     subtitle: 'Attendance View',
@@ -398,7 +470,9 @@ class _SetupScreenState extends State<SetupScreen> {
                     ? 'Advisor Details'
                     : (_selectedRole == UserRole.admin
                         ? 'HOD Verification'
-                        : 'Verify Student from Roster'),
+                        : (_selectedRole == UserRole.staff
+                            ? 'Staff / Subject Teacher Section'
+                            : 'Verify Student from Roster')),
               ),
               const SizedBox(height: 10),
 
@@ -447,6 +521,141 @@ class _SetupScreenState extends State<SetupScreen> {
                         'Assigned Class: I MCA A • Batch 2026–2028',
                         style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                       ),
+                    ],
+                  ),
+                ),
+              ] else if (_selectedRole == UserRole.staff) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.menu_book_rounded, color: AppColors.primary, size: 22),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Official MCA Faculty & Subject Teachers',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                ),
+                                Text(
+                                  'Section: I MCA - Section A • Room/Hall 408',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Select Your Faculty Profile & Subject:',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<FacultyMember>(
+                            isExpanded: true,
+                            value: (_selectedFaculty != null &&
+                                    kOfficialMcaFaculty.any((f) => f.name == _selectedFaculty!.name))
+                                ? kOfficialMcaFaculty.firstWhere((f) => f.name == _selectedFaculty!.name)
+                                : kOfficialMcaFaculty.first,
+                            items: kOfficialMcaFaculty.map((f) {
+                              return DropdownMenuItem<FacultyMember>(
+                                value: f,
+                                child: Text(
+                                  '${f.name} • ${f.subjectAbb ?? f.department}',
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (f) {
+                              if (f != null) {
+                                setState(() {
+                                  _selectedFaculty = f;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      if (_selectedFaculty != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFBBF7D0)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.verified, color: AppColors.presentGreen, size: 18),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      _selectedFaculty!.name,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '• Subject: ${_selectedFaculty!.subject ?? "General"}',
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF166534), fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                '• Subject Code: ${_selectedFaculty!.subjectCode ?? "N/A"}',
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF166534), fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                '• Section & Hall: I MCA Section A • Hall ${_selectedFaculty!.hallNo ?? "408"} (${_selectedFaculty!.hours ?? 11} hrs/sem)',
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF166534)),
+                              ),
+                              const Divider(height: 16, color: Color(0xFFBBF7D0)),
+                              Row(
+                                children: [
+                                  const Icon(Icons.key, color: Color(0xFF166534), size: 16),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Staff Passcode: ${_getFacultyDefaultPasscode(_selectedFaculty!)} or STAFF2026',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -737,12 +946,20 @@ class _SetupScreenState extends State<SetupScreen> {
                             ? (_selectedStudent != null
                                 ? 'Matching ClassCR Code for ${_selectedStudent!.name}'
                                 : 'Select student name above first')
-                            : 'Passcode for ${_getRoleTitle(_selectedRole)}',
+                            : (_selectedRole == UserRole.staff
+                                ? (_selectedFaculty != null
+                                    ? 'Staff Code for ${_selectedFaculty!.name.split(",")[0]}'
+                                    : 'Select teacher above')
+                                : 'Passcode for ${_getRoleTitle(_selectedRole)}'),
                         hintText: _selectedRole == UserRole.student
                             ? (_selectedStudent != null
                                 ? 'Enter assigned code (e.g. ${_selectedStudent!.code} or ${_selectedStudent!.enrollmentNo})'
                                 : 'Choose your name from roster above first')
-                            : 'Enter authorized passcode',
+                            : (_selectedRole == UserRole.staff
+                                ? (_selectedFaculty != null
+                                    ? 'e.g. ${_getFacultyDefaultPasscode(_selectedFaculty!)} or STAFF2026'
+                                    : 'Choose faculty profile above')
+                                : 'Enter authorized passcode'),
                         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
                         suffixIcon: _selectedRole == UserRole.student
                             ? null
@@ -770,7 +987,9 @@ class _SetupScreenState extends State<SetupScreen> {
                           child: Text(
                             _selectedRole == UserRole.student
                                 ? 'Use your assigned ClassCR code (e.g. CCR-0001 to CCR-0052) or class code'
-                                : 'Authorized code required to activate ${_getRoleTitle(_selectedRole)}',
+                                : (_selectedRole == UserRole.staff
+                                    ? 'Use your assigned teacher code (e.g. OS2026, MAT2026, DT2026, SE2026) or STAFF2026'
+                                    : 'Authorized code required to activate ${_getRoleTitle(_selectedRole)}'),
                             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                           ),
                         ),

@@ -367,6 +367,7 @@ class ClassCRState extends ChangeNotifier {
     required String code,
     String? gender,
     int? rollNo,
+    String? staffName,
   }) async {
     final entered = code.trim().toUpperCase();
 
@@ -377,6 +378,7 @@ class ClassCRState extends ChangeNotifier {
       code: entered,
       gender: gender,
       rollNo: rollNo,
+      staffName: staffName,
     );
     if (remoteRes != null) {
       return remoteRes;
@@ -392,9 +394,58 @@ class ClassCRState extends ChangeNotifier {
         return {'valid': true, 'role': 'advisor', 'name': _delegation.advisorName, 'classId': classId};
       }
     } else if (role == UserRole.staff) {
-      if (entered == 'STAFF2026' || entered == 'ADV2026' || entered == 'TEACH2026' || entered == 'NAVI2026') {
-        return {'valid': true, 'role': 'staff', 'name': 'Subject Teacher / Faculty', 'classId': classId};
+      final teacherCodes = {
+        'Mrs. V. Nandhini, AP/CA': ['OOPS2026', 'NAVI2026', 'ADV2026', '25PMCT12', '25PMCP11', 'STAFF2026'],
+        'Dr. S. Sivaramakrishnan, Prof/Maths': ['MAT2026', 'SIVA2026', '25PMCT11', 'STAFF2026'],
+        'Mrs. K. Shivashankari, AP/CA': ['DT2026', 'SHIVA2026', '25PMCT13', '25PMCP12', 'STAFF2026'],
+        'Ms. M. Tamilmani, AP/CA': ['OS2026', 'TAMIL2026', '25PMCT14', '25PMCP13', 'STAFF2026'],
+        'Ms. V. Deepa, AP/CA': ['SE2026', 'DEEPA2026', '25PMCT15', 'STAFF2026'],
+      };
+
+      FacultyMember? matchedFaculty;
+      if (staffName != null && staffName.isNotEmpty) {
+        matchedFaculty = kOfficialMcaFaculty.firstWhere(
+          (f) => f.name.toLowerCase().contains(staffName.toLowerCase()),
+          orElse: () => kOfficialMcaFaculty[3],
+        );
+      } else {
+        for (final entry in teacherCodes.entries) {
+          if (entry.value.contains(entered)) {
+            matchedFaculty = kOfficialMcaFaculty.firstWhere(
+              (f) => f.name == entry.key,
+              orElse: () => kOfficialMcaFaculty[3],
+            );
+            break;
+          }
+        }
       }
+
+      if (matchedFaculty != null) {
+        final allowed = teacherCodes[matchedFaculty.name] ?? ['STAFF2026'];
+        if (allowed.contains(entered) || entered == 'STAFF2026' || entered == 'ADV2026') {
+          return {
+            'valid': true,
+            'role': 'staff',
+            'name': matchedFaculty.name,
+            'subject': matchedFaculty.subject,
+            'code': matchedFaculty.subjectCode,
+            'classId': classId,
+          };
+        } else {
+          return {
+            'valid': false,
+            'error': 'Invalid passcode for ${matchedFaculty.name}. Assigned code: ${allowed.first} or STAFF2026.',
+          };
+        }
+      }
+
+      if (entered == 'STAFF2026' || entered == 'ADV2026' || entered == 'TEACH2026' || entered == 'NAVI2026') {
+        return {'valid': true, 'role': 'staff', 'name': 'Ms. M. Tamilmani, AP/CA', 'subject': 'Operating Systems & Lab', 'classId': classId};
+      }
+      return {
+        'valid': false,
+        'error': 'Invalid staff passcode. Please enter your teacher code or STAFF2026.',
+      };
     } else if (role == UserRole.cr) {
       if (!_delegation.isCrAppointed) {
         return {
@@ -628,6 +679,7 @@ class ClassCRState extends ChangeNotifier {
     required String classId,
     String? studentId,
     String? gender,
+    String? subject,
   }) async {
     _currentUser = AppUser(
       id: 'user_${role.name}',
@@ -638,6 +690,7 @@ class ClassCRState extends ChangeNotifier {
       studentId: studentId,
       department: 'MCA',
       gender: gender,
+      subject: subject,
     );
     _isSetupDone = true;
 
@@ -651,6 +704,9 @@ class ClassCRState extends ChangeNotifier {
     }
     if (gender != null) {
       await prefs.setString('classcr_user_gender', gender);
+    }
+    if (subject != null) {
+      await prefs.setString('classcr_user_subject', subject);
     }
 
     notifyListeners();
@@ -666,6 +722,7 @@ class ClassCRState extends ChangeNotifier {
     await prefs.remove('classcr_class_id');
     await prefs.remove('classcr_student_id');
     await prefs.remove('classcr_user_gender');
+    await prefs.remove('classcr_user_subject');
     notifyListeners();
   }
 
