@@ -4,6 +4,8 @@ import '../../models/models.dart';
 import '../../data/mca_faculty.dart';
 import '../../providers/classcr_state.dart';
 import '../cr/report_screen.dart';
+import '../cr/subject_attendance_screen.dart';
+import '../staff/staff_dashboard_screen.dart';
 
 class AdvisorDashboardScreen extends StatefulWidget {
   final ClassCRState state;
@@ -148,6 +150,17 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
       listenable: widget.state,
       builder: (context, _) {
         final absentees = widget.state.absentRolls.toList()..sort();
+        final now = DateTime.now();
+        final dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        final todayDayName = dayNames[now.weekday - 1];
+        final todaySlot = kMcaTimeTable.firstWhere(
+          (s) => s.day.toLowerCase() == todayDayName.toLowerCase(),
+          orElse: () => kMcaTimeTable.first,
+        );
+        final advisorFaculty = kOfficialMcaFaculty.firstWhere(
+          (f) => f.name.contains('Nandhini'),
+          orElse: () => kOfficialMcaFaculty.first,
+        );
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -468,6 +481,223 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                 ),
                 const SizedBox(height: 14),
               ],
+
+              // SUBJECT-WISE LECTURE ATTENDANCE & STAFF PORTAL ACCESS
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF99F6E4), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0D9488).withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.menu_book, color: Color(0xFF0D9488), size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Subject-Wise Attendance',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.deepBlue,
+                                  ),
+                                ),
+                                Text(
+                                  'Today: $todayDayName • Period P1 to P7',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => StaffDashboardScreen(state: widget.state)),
+                            );
+                          },
+                          icon: const Icon(Icons.school_outlined, size: 16),
+                          label: const Text('Staff Screen'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D9488),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Advisor's own subject banner
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF86EFAC)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.star, color: AppColors.presentGreen, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Your Subject: ${advisorFaculty.subject ?? "OOPS & Lab"} (${advisorFaculty.subjectCode ?? "25PMCT12"})',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF166534)),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Taught by ${advisorFaculty.name} • Hall ${advisorFaculty.hallNo ?? "408"}',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF15803D)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => SubjectAttendanceScreen(state: widget.state)),
+                              );
+                            },
+                            child: const Text('Mark / Review', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF166534))),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Period List for Today
+                    const Text(
+                      "Today's Timetable Periods & Faculty Status:",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Column(
+                      children: List.generate(todaySlot.periods.length, (idx) {
+                        final pNum = idx + 1;
+                        final pSubj = todaySlot.periods[idx];
+                        final faculty = getFacultyForSubject(pSubj);
+                        final timing = kMcaPeriodTimings[idx.clamp(0, kMcaPeriodTimings.length - 1)];
+                        final isAdvisorSubject = faculty != null && faculty.name.contains('Nandhini');
+
+                        final record = widget.state.currentAttendanceRecord;
+                        final isMarkedForPeriod = record != null && record.periodNo == pNum;
+                        final ackStatus = isMarkedForPeriod ? (record.facultyAcknowledgmentStatus ?? 'pending') : null;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isAdvisorSubject ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isAdvisorSubject ? const Color(0xFF86EFAC) : AppColors.cardBorder,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isAdvisorSubject ? AppColors.presentGreen : const Color(0xFF0D9488),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'P$pNum',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          pSubj,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        ),
+                                        if (isAdvisorSubject) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.presentGreen.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: const Text(
+                                              'Your Class',
+                                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    Text(
+                                      '${faculty?.name ?? "Faculty"} • ${timing.startTime}-${timing.endTime} (Hall ${faculty?.hallNo ?? "408"})',
+                                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                    ),
+                                    if (isMarkedForPeriod) ...[
+                                      const SizedBox(height: 4),
+                                      if (ackStatus == 'acknowledged')
+                                        const Text('✓ Acknowledged by Faculty', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.presentGreen))
+                                      else if (ackStatus == 'rejected')
+                                        Text('⚠️ Discrepancy: ${record.facultyRejectionReason ?? ""}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.absentRed))
+                                      else
+                                        const Text('⏳ Dispatched • Awaiting Faculty Ack', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textSecondary),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => StaffDashboardScreen(state: widget.state)),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
 
               // APPOINT CR, ASST. CRS & CONFIGURE PASSCODES (Advisor authority)
               Container(

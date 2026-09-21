@@ -123,9 +123,19 @@ class _MainShellState extends State<MainShell> {
               label: 'Advisor Portal',
             ),
             NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined),
+              selectedIcon: Icon(Icons.menu_book, color: Color(0xFF0D9488)),
+              label: 'Subjects',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.school_outlined),
+              selectedIcon: Icon(Icons.school, color: Color(0xFF0284C7)),
+              label: 'Staff Screen',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.checklist_rtl_outlined),
               selectedIcon: Icon(Icons.checklist_rtl, color: Color(0xFF0284C7)),
-              label: 'Attendance Review',
+              label: 'Review',
             ),
             NavigationDestination(
               icon: Icon(Icons.description_outlined),
@@ -143,8 +153,12 @@ class _MainShellState extends State<MainShell> {
           if (safeIndex == 0) {
             contentWidget = AdvisorDashboardScreen(state: widget.state);
           } else if (safeIndex == 1) {
-            contentWidget = MarkAttendanceScreen(state: widget.state);
+            contentWidget = SubjectAttendanceScreen(state: widget.state);
           } else if (safeIndex == 2) {
+            contentWidget = StaffDashboardScreen(state: widget.state);
+          } else if (safeIndex == 3) {
+            contentWidget = MarkAttendanceScreen(state: widget.state);
+          } else if (safeIndex == 4) {
             contentWidget = ReportScreen(state: widget.state);
           } else {
             contentWidget = _buildSettingsView();
