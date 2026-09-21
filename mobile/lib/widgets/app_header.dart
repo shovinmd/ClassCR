@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
+import '../models/models.dart';
 import '../providers/classcr_state.dart';
 import 'role_switcher_sheet.dart';
 
@@ -76,7 +77,9 @@ class AppHeader extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        state.currentUser.role.name.toUpperCase(),
+                        state.currentUser.role == UserRole.admin
+                            ? 'HOD'
+                            : state.currentUser.role.name.toUpperCase(),
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,

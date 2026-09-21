@@ -284,8 +284,8 @@ class ClassCRState extends ChangeNotifier {
 
     // 2. Offline fallback verification
     if (role == UserRole.admin) {
-      if (entered == 'ADMIN2026' || entered == 'ADM2026') {
-        return {'valid': true, 'role': 'admin', 'name': 'College Dean / Administrator', 'classId': classId};
+      if (entered == 'ADMIN2026' || entered == 'ADM2026' || entered == 'HOD2026') {
+        return {'valid': true, 'role': 'admin', 'name': 'Head of Department (HOD)', 'classId': classId};
       }
     } else if (role == UserRole.advisor) {
       if (entered == _delegation.advisorCode || entered == 'ADV2026' || entered == 'NAVI2026') {
@@ -627,10 +627,10 @@ class ClassCRState extends ChangeNotifier {
       case UserRole.admin:
         _currentUser = const AppUser(
           id: 'user_adm_1',
-          name: 'College Dean / Administrator',
-          email: 'admin@classcr.edu',
+          name: 'Head of Department (HOD)',
+          email: 'hod@classcr.edu',
           role: UserRole.admin,
-          department: 'All Departments',
+          department: 'MCA',
         );
         break;
     }

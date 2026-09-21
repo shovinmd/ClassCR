@@ -75,7 +75,7 @@ class _SetupScreenState extends State<SetupScreen> {
     if (verification['valid'] != true) {
       setState(() {
         _errorMessage = verification['error']?.toString() ??
-            'Invalid passcode for ${_getRoleTitle(_selectedRole)}. Please verify with your Class Advisor or Admin.';
+            'Invalid passcode for ${_getRoleTitle(_selectedRole)}. Please verify with your Class Advisor or HOD.';
         _isVerifying = false;
       });
       return;
@@ -88,7 +88,7 @@ class _SetupScreenState extends State<SetupScreen> {
       userName = verification['name']?.toString() ?? _advisorNameController.text.trim();
       if (userName.isEmpty) userName = 'Prof. Nandhini G (Navi Ma\'am)';
     } else if (_selectedRole == UserRole.admin) {
-      userName = verification['name']?.toString() ?? 'College Dean / Administrator';
+      userName = verification['name']?.toString() ?? 'Head of Department (HOD)';
     } else {
       if (_selectedStudent == null) {
         setState(() {
@@ -140,7 +140,7 @@ class _SetupScreenState extends State<SetupScreen> {
       case UserRole.student:
         return 'Student';
       case UserRole.admin:
-        return 'College Admin';
+        return 'HOD';
     }
   }
 
@@ -275,8 +275,8 @@ class _SetupScreenState extends State<SetupScreen> {
                   const SizedBox(width: 8),
                   _buildRoleCard(
                     role: UserRole.admin,
-                    title: 'Admin',
-                    subtitle: 'Super Admin',
+                    title: 'HOD',
+                    subtitle: 'Dept Head',
                     icon: Icons.admin_panel_settings_outlined,
                   ),
                 ],
@@ -290,7 +290,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 _selectedRole == UserRole.advisor
                     ? 'Advisor Details'
                     : (_selectedRole == UserRole.admin
-                        ? 'Administrator Verification'
+                        ? 'HOD Verification'
                         : 'Verify Student from Roster'),
               ),
               const SizedBox(height: 10),
@@ -309,7 +309,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'College Dean & System Administrator.\nFull administrative oversight over departments, classes, and advisor appointments.',
+                          'Head of Department (HOD).\nAcademic and department oversight over curriculum, classes, and faculty advisors.',
                           style: TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
                         ),
                       ),

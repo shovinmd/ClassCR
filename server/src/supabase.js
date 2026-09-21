@@ -31,7 +31,10 @@ const supabase = createClient(supabaseUrl, activeKey, {
   }
 });
 
-const femaleRolls = new Set([3, 5, 6, 9, 11, 12, 13, 15, 19, 20, 21, 23, 29, 32, 33, 35, 38, 42, 44, 47, 48, 50, 51, 52]);
+const femaleRolls = new Set([
+  5, 6, 9, 11, 12, 13, 15, 19, 20, 21, 23, 28, 31, 32, 34, 37, 41, 47, 48, 50, 51, 52,
+  29, 33, 35, 38, 42 // prior rolls compatibility
+]);
 
 // Helper to map DB student row (snake_case) to client student (camelCase)
 function mapStudent(row) {
@@ -170,12 +173,12 @@ const memoryStore = {
       absentCount: 9,
       absentStudents: [
         { rollNo: 13, name: 'DHIVYALAKSHMI H', enrollmentNo: '260311' },
-        { rollNo: 25, name: 'LOKESHWARAN R', enrollmentNo: '260435' },
-        { rollNo: 27, name: 'MAHESH KUMAR.R', enrollmentNo: '260367' },
-        { rollNo: 28, name: 'MANIKANDAN D', enrollmentNo: '260345' },
-        { rollNo: 31, name: 'MUTHUVEL R', enrollmentNo: '260320' },
-        { rollNo: 34, name: 'NETHAJI.V', enrollmentNo: '260333' },
-        { rollNo: 37, name: 'PRITHEEVIRAJ.S', enrollmentNo: '260405' },
+        { rollNo: 26, name: 'MAHESH KUMAR.R', enrollmentNo: '260367' },
+        { rollNo: 27, name: 'MANIKANDAN D', enrollmentNo: '260345' },
+        { rollNo: 30, name: 'MUTHUVEL R', enrollmentNo: '260320' },
+        { rollNo: 33, name: 'NETHAJI.V', enrollmentNo: '260333' },
+        { rollNo: 36, name: 'PRITHEEVIRAJ.S', enrollmentNo: '260405' },
+        { rollNo: 43, name: 'SANJAY VIGNESHWARAN J', enrollmentNo: '260435' },
         { rollNo: 44, name: 'SATHYA.P', enrollmentNo: '260368' },
         { rollNo: 52, name: 'TASFIYA FARVIN S', enrollmentNo: '260738' }
       ],
@@ -455,7 +458,7 @@ const db = {
       classId: 'I-MCA-A',
       advisorName: 'Mrs. V. Nandhini, AP/CA',
       advisorCode: 'NAVI2026',
-      crRoll: 31,
+      crRoll: 30,
       crName: 'MUTHUVEL R',
       crCode: 'CR2026',
       maleAsstRoll: 45,
@@ -474,7 +477,7 @@ const db = {
         classId,
         advisorName: 'Mrs. V. Nandhini, AP/CA',
         advisorCode: 'NAVI2026',
-        crRoll: 31,
+        crRoll: 30,
         crName: 'MUTHUVEL R',
         crCode: 'CR2026',
         maleAsstRoll: 45,
@@ -545,11 +548,11 @@ const db = {
     const entered = (code || '').trim().toUpperCase();
 
     if (role === 'admin') {
-      const match = entered === 'ADMIN2026' || entered === 'ADM2026';
+      const match = entered === 'ADMIN2026' || entered === 'ADM2026' || entered === 'HOD2026';
       if (match) {
         return {
           valid: true,
-          name: 'College Dean / Administrator',
+          name: 'Head of Department (HOD)',
           role: 'admin',
           classId
         };

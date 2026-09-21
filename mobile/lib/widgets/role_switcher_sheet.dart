@@ -238,12 +238,12 @@ class RoleSwitcherSheet extends StatelessWidget {
               onTap: () => _promptPasscodeAndSwitch(context, UserRole.student),
             ),
 
-            // 5. Admin
+            // 5. HOD
             _buildCustomTile(
               context,
               isSelected: currentRole == UserRole.admin,
-              title: '5. College Administrator',
-              subtitle: 'Dean / Admin Overview (1,284 students, 32 classes, 8 departments)',
+              title: '5. Head of Department (HOD)',
+              subtitle: 'Department & Academic Oversight (Classes, Faculty, Attendance)',
               icon: Icons.admin_panel_settings_outlined,
               color: const Color(0xFF8B5CF6),
               onTap: () => _promptPasscodeAndSwitch(context, UserRole.admin),

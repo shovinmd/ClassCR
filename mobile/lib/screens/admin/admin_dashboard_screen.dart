@@ -74,7 +74,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'CLASSCR ADMIN',
+                    'CLASSCR HOD PORTAL',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
@@ -84,7 +84,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'College-wide Attendance Administration',
+                    'Department & Academic Attendance Oversight',
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
@@ -96,7 +96,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
-                  'Super Admin',
+                  'HOD',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -365,7 +365,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.deepBlue),
                           ),
                           Text(
-                            'Admin sets advisor name and access passcode for I MCA',
+                            'HOD sets advisor name and access passcode for I MCA',
                             style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                           ),
                         ],

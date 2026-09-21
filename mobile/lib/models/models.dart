@@ -39,7 +39,7 @@ class AppUser {
       case UserRole.student:
         return 'Student';
       case UserRole.admin:
-        return 'College Admin';
+        return 'HOD';
     }
   }
 
@@ -71,7 +71,10 @@ class Student {
   bool get isMale => gender != 'F';
 
   static const Set<int> femaleRollNumbers = {
-    3, 5, 6, 9, 11, 12, 13, 15, 19, 20, 21, 23, 29, 32, 33, 35, 38, 42, 44, 47, 48, 50, 51, 52
+    // Current adjusted rolls for all 22 female students:
+    5, 6, 9, 11, 12, 13, 15, 19, 20, 21, 23, 28, 31, 32, 34, 37, 41, 47, 48, 50, 51, 52,
+    // Original list rolls for backwards compatibility:
+    29, 33, 35, 38, 42
   };
 
   factory Student.fromJson(Map<String, dynamic> json) {
@@ -240,7 +243,7 @@ class ClassDelegation {
     required this.classId,
     this.advisorName = 'Prof. Nandhini G (Navi Ma\'am)',
     this.advisorCode = 'NAVI2026',
-    this.crRoll = 31,
+    this.crRoll = 30,
     this.crName = 'MUTHUVEL R',
     this.crCode = 'CR2026',
     this.maleAsstRoll = 45,
@@ -257,7 +260,7 @@ class ClassDelegation {
       classId: json['classId']?.toString() ?? 'I-MCA-A',
       advisorName: json['advisorName']?.toString() ?? 'Prof. Nandhini G (Navi Ma\'am)',
       advisorCode: json['advisorCode']?.toString() ?? 'NAVI2026',
-      crRoll: json['crRoll'] is int ? json['crRoll'] : int.tryParse(json['crRoll']?.toString() ?? '31') ?? 31,
+      crRoll: json['crRoll'] is int ? json['crRoll'] : int.tryParse(json['crRoll']?.toString() ?? '30') ?? 30,
       crName: json['crName']?.toString() ?? 'MUTHUVEL R',
       crCode: json['crCode']?.toString() ?? 'CR2026',
       maleAsstRoll: json['maleAsstRoll'] is int ? json['maleAsstRoll'] : int.tryParse(json['maleAsstRoll']?.toString() ?? '45') ?? 45,
