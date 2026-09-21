@@ -23,6 +23,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  UserRole? _lastRole;
 
   @override
   Widget build(BuildContext context) {
@@ -30,38 +31,167 @@ class _MainShellState extends State<MainShell> {
       listenable: widget.state,
       builder: (context, _) {
         final role = widget.state.currentUser.role;
+        if (_lastRole != role) {
+          _lastRole = role;
+          _currentIndex = 0;
+        }
 
+        List<NavigationDestination> destinations;
         Widget contentWidget;
-        if (_currentIndex == 1) {
-          // Students / Mark Attendance Tab
-          contentWidget = MarkAttendanceScreen(state: widget.state);
-        } else if (_currentIndex == 2) {
-          // Reports Tab
-          contentWidget = ReportScreen(state: widget.state);
-        } else if (_currentIndex == 3) {
-          // Settings / Profile
-          contentWidget = _buildSettingsView();
+
+        if (role == UserRole.student) {
+          destinations = const [
+            NavigationDestination(
+              icon: Icon(Icons.school_outlined),
+              selectedIcon: Icon(Icons.school, color: AppColors.primary),
+              label: 'My Attendance',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.description_outlined),
+              selectedIcon: Icon(Icons.description, color: AppColors.primary),
+              label: 'Class Report',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings, color: AppColors.primary),
+              label: 'Settings',
+            ),
+          ];
+
+          final safeIndex = _currentIndex.clamp(0, destinations.length - 1);
+          if (safeIndex == 0) {
+            contentWidget = StudentPortalScreen(state: widget.state);
+          } else if (safeIndex == 1) {
+            contentWidget = ReportScreen(state: widget.state);
+          } else {
+            contentWidget = _buildSettingsView();
+          }
+        } else if (role == UserRole.admin) {
+          destinations = const [
+            NavigationDestination(
+              icon: Icon(Icons.admin_panel_settings_outlined),
+              selectedIcon: Icon(Icons.admin_panel_settings, color: Color(0xFF8B5CF6)),
+              label: 'Dashboard',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.description_outlined),
+              selectedIcon: Icon(Icons.description, color: Color(0xFF8B5CF6)),
+              label: 'Class Report',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings, color: Color(0xFF8B5CF6)),
+              label: 'Settings',
+            ),
+          ];
+
+          final safeIndex = _currentIndex.clamp(0, destinations.length - 1);
+          if (safeIndex == 0) {
+            contentWidget = AdminDashboardScreen(state: widget.state);
+          } else if (safeIndex == 1) {
+            contentWidget = ReportScreen(state: widget.state);
+          } else {
+            contentWidget = _buildSettingsView();
+          }
+        } else if (role == UserRole.staff) {
+          destinations = const [
+            NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined),
+              selectedIcon: Icon(Icons.menu_book, color: Color(0xFF0D9488)),
+              label: 'Lectures',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.description_outlined),
+              selectedIcon: Icon(Icons.description, color: Color(0xFF0D9488)),
+              label: 'Reports',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings, color: Color(0xFF0D9488)),
+              label: 'Settings',
+            ),
+          ];
+
+          final safeIndex = _currentIndex.clamp(0, destinations.length - 1);
+          if (safeIndex == 0) {
+            contentWidget = StaffDashboardScreen(state: widget.state);
+          } else if (safeIndex == 1) {
+            contentWidget = ReportScreen(state: widget.state);
+          } else {
+            contentWidget = _buildSettingsView();
+          }
+        } else if (role == UserRole.advisor) {
+          destinations = const [
+            NavigationDestination(
+              icon: Icon(Icons.psychology_alt_outlined),
+              selectedIcon: Icon(Icons.psychology_alt, color: Color(0xFF0284C7)),
+              label: 'Advisor Portal',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.checklist_rtl_outlined),
+              selectedIcon: Icon(Icons.checklist_rtl, color: Color(0xFF0284C7)),
+              label: 'Attendance Review',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.description_outlined),
+              selectedIcon: Icon(Icons.description, color: Color(0xFF0284C7)),
+              label: 'Reports',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings, color: Color(0xFF0284C7)),
+              label: 'Settings',
+            ),
+          ];
+
+          final safeIndex = _currentIndex.clamp(0, destinations.length - 1);
+          if (safeIndex == 0) {
+            contentWidget = AdvisorDashboardScreen(state: widget.state);
+          } else if (safeIndex == 1) {
+            contentWidget = MarkAttendanceScreen(state: widget.state);
+          } else if (safeIndex == 2) {
+            contentWidget = ReportScreen(state: widget.state);
+          } else {
+            contentWidget = _buildSettingsView();
+          }
         } else {
-          // Home Tab based on active role
-          switch (role) {
-            case UserRole.cr:
-            case UserRole.assistantCr:
-              contentWidget = CrHomeScreen(state: widget.state);
-              break;
-            case UserRole.advisor:
-              contentWidget = AdvisorDashboardScreen(state: widget.state);
-              break;
-            case UserRole.staff:
-              contentWidget = StaffDashboardScreen(state: widget.state);
-              break;
-            case UserRole.student:
-              contentWidget = StudentPortalScreen(state: widget.state);
-              break;
-            case UserRole.admin:
-              contentWidget = AdminDashboardScreen(state: widget.state);
-              break;
+          // CR & Assistant CR
+          destinations = const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home, color: AppColors.primary),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.groups_outlined),
+              selectedIcon: Icon(Icons.groups, color: AppColors.primary),
+              label: 'Attendance',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.description_outlined),
+              selectedIcon: Icon(Icons.description, color: AppColors.primary),
+              label: 'Reports',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings, color: AppColors.primary),
+              label: 'Settings',
+            ),
+          ];
+
+          final safeIndex = _currentIndex.clamp(0, destinations.length - 1);
+          if (safeIndex == 0) {
+            contentWidget = CrHomeScreen(state: widget.state);
+          } else if (safeIndex == 1) {
+            contentWidget = MarkAttendanceScreen(state: widget.state);
+          } else if (safeIndex == 2) {
+            contentWidget = ReportScreen(state: widget.state);
+          } else {
+            contentWidget = _buildSettingsView();
           }
         }
+
+        final activeIndex = _currentIndex.clamp(0, destinations.length - 1);
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -72,7 +202,7 @@ class _MainShellState extends State<MainShell> {
             ],
           ),
           bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
+            selectedIndex: activeIndex,
             onDestinationSelected: (index) {
               setState(() {
                 _currentIndex = index;
@@ -81,28 +211,7 @@ class _MainShellState extends State<MainShell> {
             backgroundColor: Colors.white,
             elevation: 3,
             indicatorColor: AppColors.primary.withOpacity(0.12),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home, color: AppColors.primary),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.groups_outlined),
-                selectedIcon: Icon(Icons.groups, color: AppColors.primary),
-                label: 'Students',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.description_outlined),
-                selectedIcon: Icon(Icons.description, color: AppColors.primary),
-                label: 'Reports',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings, color: AppColors.primary),
-                label: 'Settings',
-              ),
-            ],
+            destinations: destinations,
           ),
           floatingActionButton: role == UserRole.student
               ? null

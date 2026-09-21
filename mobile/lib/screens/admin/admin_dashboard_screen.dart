@@ -68,7 +68,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           const SizedBox(height: 20),
 
-          // OVERVIEW STATS GRID (Spec metrics)
+          // OVERVIEW STATS GRID (Live database state)
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -91,9 +91,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildAdminStat('Students', '1,284', Icons.school),
-                    _buildAdminStat('Departments', '8', Icons.domain),
-                    _buildAdminStat('Classes', '32', Icons.class_outlined),
+                    _buildAdminStat('Students', '${widget.state.students.length}', Icons.school),
+                    _buildAdminStat('Department', 'MCA', Icons.domain),
+                    _buildAdminStat('Class', 'I MCA A', Icons.class_outlined),
                   ],
                 ),
                 const Padding(
@@ -103,9 +103,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildAdminStat('CRs', '32', Icons.badge_outlined),
-                    _buildAdminStat('Advisors', '32', Icons.psychology),
-                    _buildAdminStat('Active Acad Year', '2026–27', Icons.calendar_month),
+                    _buildAdminStat('Faculty', '${kOfficialMcaFaculty.length}', Icons.badge_outlined),
+                    _buildAdminStat('Advisor', widget.state.delegation.advisorName.isNotEmpty ? '1 Active' : '0', Icons.psychology),
+                    _buildAdminStat('Acad Year', '2026–27', Icons.calendar_month),
                   ],
                 ),
               ],
@@ -114,7 +114,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           const SizedBox(height: 20),
 
-          // TODAY'S REPORTS MONITOR
+          // TODAY'S REPORTS MONITOR (Real database state)
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -125,9 +125,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Today's Reports Status",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Today's Reports Status",
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: (widget.state.isAttendanceLocked ? AppColors.presentGreen : const Color(0xFFD97706)).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        widget.state.isAttendanceLocked ? 'Locked ✓' : 'Live Sync Active',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: widget.state.isAttendanceLocked ? AppColors.presentGreen : const Color(0xFFD97706),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -139,19 +159,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           color: const Color(0xFFDCFCE7),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               'Submitted',
                               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
-                              '29',
-                              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF15803D)),
+                              widget.state.isAttendanceLocked ? '1' : '0',
+                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF15803D)),
                             ),
-                            Text('Classes marked on time', style: TextStyle(fontSize: 10, color: Color(0xFF166534))),
+                            Text(
+                              widget.state.isAttendanceLocked ? 'I MCA A finalized' : 'Awaiting lock by advisor',
+                              style: const TextStyle(fontSize: 10, color: Color(0xFF166534)),
+                            ),
                           ],
                         ),
                       ),
@@ -164,19 +187,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           color: const Color(0xFFFEF3C7),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Pending',
+                            const Text(
+                              'Pending / Draft',
                               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
-                              '3',
-                              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFFB45309)),
+                              widget.state.isAttendanceLocked ? '0' : '1',
+                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFFB45309)),
                             ),
-                            Text('Awaiting CR submission', style: TextStyle(fontSize: 10, color: Color(0xFF92400E))),
+                            Text(
+                              widget.state.isAttendanceLocked ? '0 pending classes' : 'I MCA A draft in progress',
+                              style: const TextStyle(fontSize: 10, color: Color(0xFF92400E)),
+                            ),
                           ],
                         ),
                       ),
@@ -259,7 +285,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '$_selectedSection (52 Students)',
+                      '$_selectedSection (${widget.state.students.length} Students)',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.deepBlue),
                     ),
                     ElevatedButton(
@@ -279,7 +305,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const SizedBox(height: 8),
                 Text('• Class Advisor: ${widget.state.delegation.advisorName}'),
                 Text('• Class Representative (CR): ${widget.state.delegation.crName}'),
-                const Text('• Today Status: 43 Present / 9 Absent (Submitted at 09:18 AM) ✓'),
+                Text(
+                  widget.state.isAttendanceLocked
+                      ? '• Today Status: ${widget.state.presentCount} Present / ${widget.state.absentCount} Absent (Locked & Submitted) ✓'
+                      : '• Today Status: ${widget.state.presentCount} Present / ${widget.state.absentCount} Absent (Draft In-Progress) •',
+                ),
               ],
             ),
           ),
@@ -435,12 +465,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                '${widget.state.presentCount}/52',
+                                '${widget.state.presentCount}/${widget.state.students.length}',
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.presentGreen),
                               ),
-                              const Text(
-                                'Recorded',
-                                style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                              Text(
+                                widget.state.isAttendanceLocked ? 'Locked' : 'In-Progress',
+                                style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                               ),
                             ],
                           ),
@@ -463,6 +493,133 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // REAL-TIME DATABASE ATTENDANCE HISTORY
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.storage_rounded, size: 20, color: AppColors.deepBlue),
+                        SizedBox(width: 8),
+                        Text(
+                          'Database Attendance Records',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.deepBlue),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.presentGreen.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Live Supabase Sync',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (widget.state.history.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Live Session: ${widget.state.formattedTodayDate}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${widget.state.presentCount} Present • ${widget.state.absentCount} Absent • Marked by ${widget.state.delegation.crName} (CR)',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.state.isAttendanceLocked
+                              ? 'Status: Locked & Approved by Advisor ✓'
+                              : 'Status: Live in-progress draft (changes sync in real-time)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: widget.state.isAttendanceLocked ? AppColors.presentGreen : const Color(0xFFD97706),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Column(
+                    children: widget.state.history.map((record) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Date: ${record.date} (I MCA A)',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'By: ${record.markedByName} • ${record.presentCount} Present, ${record.absentCount} Absent',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: (record.isLocked ? AppColors.presentGreen : const Color(0xFFD97706)).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                record.isLocked ? 'Locked ✓' : 'Draft',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: record.isLocked ? AppColors.presentGreen : const Color(0xFFD97706),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
               ],
             ),
           ),

@@ -651,6 +651,42 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
     return ListenableBuilder(
       listenable: widget.state,
       builder: (context, _) {
+        final currentRole = widget.state.currentRole;
+        if (currentRole == UserRole.student || currentRole == UserRole.admin) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Attendance Access Restricted'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      currentRole == UserRole.admin ? Icons.admin_panel_settings : Icons.school,
+                      size: 64,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      currentRole == UserRole.admin
+                          ? 'Attendance marking is handled strictly by Class Representatives (CR & Asst. CR) and approved by Class Advisor.\n\nHOD monitors academic records via the HOD Portal.'
+                          : 'Attendance marking is only accessible to Class Representatives.\n\nStudents can check attendance and announcements in the Student Portal.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
         final list = filteredStudents;
 
         return Scaffold(

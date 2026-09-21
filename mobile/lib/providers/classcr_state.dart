@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../data/mca_students.dart';
+import '../data/mca_faculty.dart';
 import '../services/api_service.dart';
 
 class ClassCRState extends ChangeNotifier {
@@ -67,9 +68,10 @@ class ClassCRState extends ChangeNotifier {
   int? get activePeriodNo => _currentAttendanceRecord?.periodNo;
   String? get activePeriodSubject => _currentAttendanceRecord?.periodSubject;
 
-  // Only advisor or admin can edit attendance after final locked submission
+  // Only CR & Asst. CR can mark attendance while unlocked; only Class Advisor can modify/override after submission. HOD and Students CANNOT mark or modify attendance.
   bool get canModifyAttendance =>
-      !isAttendanceLocked || _currentUser.role == UserRole.advisor || _currentUser.role == UserRole.admin;
+      (!isAttendanceLocked && (_currentUser.role == UserRole.cr || _currentUser.role == UserRole.assistantCr)) ||
+      _currentUser.role == UserRole.advisor;
 
   // Set of absent roll numbers
   final Set<int> _absentRolls = {};
@@ -375,6 +377,147 @@ class ClassCRState extends ChangeNotifier {
     }
 
     return {'valid': false, 'error': 'Invalid verification passcode'};
+  }
+
+  // Universal Code Verification: instantly deduces role & identity from passcode
+  Map<String, dynamic> verifyAnyCode(String rawCode) {
+    final code = rawCode.trim().toUpperCase();
+    if (code.isEmpty) {
+      return {'valid': false, 'error': 'Please enter your passcode or ClassCR code'};
+    }
+
+    // 1. HOD / Admin Passcodes
+    if (code == 'HOD2026' || code == 'ADMIN2026' || code == 'ADM2026') {
+      return {
+        'valid': true,
+        'role': UserRole.admin,
+        'name': 'Head of Department (HOD)',
+        'classId': 'I-MCA-A',
+        'gender': 'M',
+        'title': 'Head of Department (HOD)',
+      };
+    }
+
+    // 2. Advisor Passcodes
+    if (code == 'ADV2026' || code == 'NAVI2026' || code == _delegation.advisorCode.toUpperCase()) {
+      return {
+        'valid': true,
+        'role': UserRole.advisor,
+        'name': _delegation.advisorName.isNotEmpty ? _delegation.advisorName : 'Mrs. V. Nandhini, AP/CA',
+        'classId': 'I-MCA-A',
+        'gender': 'F',
+        'title': 'Class Advisor (Mrs. V. Nandhini, AP/CA)',
+      };
+    }
+
+    // 3. Staff / Faculty Passcodes
+    if (code == 'STAFF2026' || code == 'TEACH2026') {
+      return {
+        'valid': true,
+        'role': UserRole.staff,
+        'name': 'Faculty / Subject Teacher',
+        'classId': 'I-MCA-A',
+        'gender': 'M',
+        'title': 'Subject Teacher / Faculty',
+      };
+    }
+    for (final f in kOfficialMcaFaculty) {
+      if (code == (f.subjectAbb?.toUpperCase()) || code == (f.subjectCode?.toUpperCase())) {
+        return {
+          'valid': true,
+          'role': UserRole.staff,
+          'name': f.name,
+          'classId': 'I-MCA-A',
+          'gender': 'M',
+          'title': '${f.name} (${f.subject ?? f.role})',
+        };
+      }
+    }
+
+    // 4. CR Passcodes
+    if (code == 'CR2026' || code == _delegation.crCode.toUpperCase()) {
+      return {
+        'valid': true,
+        'role': UserRole.cr,
+        'name': _delegation.crName.isNotEmpty ? '${_delegation.crName} (CR)' : 'AASIM S (CR)',
+        'studentId': '260192',
+        'rollNo': _delegation.crRoll,
+        'classId': 'I-MCA-A',
+        'gender': 'M',
+        'title': 'Class Representative (CR) • ${_delegation.crName}',
+      };
+    }
+
+    // 5. Assistant CR Passcodes
+    if (code == 'ACR2026' || code == 'FACR2026' || code == _delegation.femaleAsstCode.toUpperCase()) {
+      return {
+        'valid': true,
+        'role': UserRole.assistantCr,
+        'name': _delegation.femaleAsstName.isNotEmpty ? '${_delegation.femaleAsstName} (Asst. CR)' : 'DHIVYALAKSHMI H (Asst. CR)',
+        'studentId': '260311',
+        'rollNo': _delegation.femaleAsstRoll,
+        'classId': 'I-MCA-A',
+        'gender': 'F',
+        'title': 'Assistant CR (Female) • ${_delegation.femaleAsstName}',
+      };
+    }
+    if (code == 'MACR2026' || code == _delegation.maleAsstCode.toUpperCase()) {
+      return {
+        'valid': true,
+        'role': UserRole.assistantCr,
+        'name': _delegation.maleAsstName.isNotEmpty ? '${_delegation.maleAsstName} (Asst. CR)' : 'ABDUL MALIK A (Asst. CR)',
+        'studentId': '260008',
+        'rollNo': _delegation.maleAsstRoll,
+        'classId': 'I-MCA-A',
+        'gender': 'M',
+        'title': 'Assistant CR (Male) • ${_delegation.maleAsstName}',
+      };
+    }
+
+    // 6. Generic Student Passcodes
+    if (code == 'STU2026' || code == '123456' || code == _delegation.studentCode.toUpperCase()) {
+      final firstSt = _students.isNotEmpty ? _students.first : null;
+      return {
+        'valid': true,
+        'role': UserRole.student,
+        'name': firstSt?.name ?? 'Student',
+        'studentId': firstSt?.enrollmentNo ?? '260192',
+        'student': firstSt,
+        'classId': 'I-MCA-A',
+        'gender': firstSt?.isFemale == true ? 'F' : 'M',
+        'title': 'Student • ${firstSt?.name ?? "I MCA"}',
+      };
+    }
+
+    // 7. Individual Student Code Check (e.g. CCR-0001 to CCR-0052, or enrollment number, or roll number)
+    final matchedStudent = _students.cast<Student?>().firstWhere(
+      (s) => s != null && (
+        s.code.toUpperCase() == code ||
+        s.enrollmentNo.toUpperCase() == code ||
+        'CCR-${s.rollNo.toString().padLeft(4, '0')}' == code ||
+        s.rollNo.toString() == code
+      ),
+      orElse: () => null,
+    );
+
+    if (matchedStudent != null) {
+      return {
+        'valid': true,
+        'role': UserRole.student,
+        'student': matchedStudent,
+        'name': matchedStudent.name,
+        'studentId': matchedStudent.enrollmentNo,
+        'rollNo': matchedStudent.rollNo,
+        'classId': 'I-MCA-A',
+        'gender': matchedStudent.isFemale ? 'F' : 'M',
+        'title': '#${matchedStudent.rollNo} ${matchedStudent.name} (${matchedStudent.enrollmentNo})',
+      };
+    }
+
+    return {
+      'valid': false,
+      'error': 'Unrecognized code. Enter your ClassCR code (e.g. CCR-0001), CR2026, ACR2026, ADV2026, STAFF2026, or HOD2026.',
+    };
   }
 
   // Complete First Time Onboarding Setup

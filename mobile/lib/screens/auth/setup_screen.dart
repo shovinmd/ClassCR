@@ -58,12 +58,46 @@ class _SetupScreenState extends State<SetupScreen> {
 
     if (enteredCode.isEmpty) {
       setState(() {
-        _errorMessage = 'Please enter the authorized passcode to continue';
+        _errorMessage = 'Please enter your ClassCR code or authorized passcode';
         _isVerifying = false;
       });
       return;
     }
 
+    // 1. Universal code verification (auto-detect role, student identity, staff, advisor, HOD)
+    final universal = widget.state.verifyAnyCode(enteredCode);
+    if (universal['valid'] == true) {
+      final role = universal['role'] as UserRole;
+      final name = universal['name'] as String;
+      final studentId = universal['studentId'] as String?;
+      final gender = universal['gender'] as String?;
+      final classId = universal['classId'] as String? ?? 'I-MCA-A';
+
+      await widget.state.completeSetup(
+        role: role,
+        name: name,
+        classId: classId,
+        studentId: studentId,
+        gender: gender,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.presentGreen,
+            content: Text('Verified as ${_getRoleTitle(role)}! Welcome $name.'),
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainShell(state: widget.state)),
+        );
+      }
+      return;
+    }
+
+    // 2. Fallback to manual role verification
     final studentGender = _selectedStudent != null ? (_selectedStudent!.isFemale ? 'F' : 'M') : null;
 
     final verification = await widget.state.verifyRolePasscode(
@@ -205,14 +239,172 @@ class _SetupScreenState extends State<SetupScreen> {
                     ),
                     const SizedBox(height: 2),
                     const Text(
-                      'Set up your class & role to get started',
+                      'Enter code to sign in or select your role manually',
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
               ),
 
+              const SizedBox(height: 20),
+
+              // QUICK CODE LOGIN (Direct passcode / ClassCR code recognition)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF38BDF8).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.flash_on, color: Color(0xFF38BDF8), size: 18),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Quick Code Login',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Enter your ClassCR Code or Passcode. The app automatically verifies your identity and role (Student, CR, Asst. CR, Advisor, Faculty, or HOD).',
+                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _codeController,
+                      textCapitalization: TextCapitalization.characters,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                      onChanged: (_) => setState(() => _errorMessage = ''),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.08),
+                        hintText: 'e.g. CCR-0013, CR2026, ACR2026, ADV2026, HOD2026',
+                        hintStyle: const TextStyle(color: Colors.white38, fontSize: 13, letterSpacing: 0),
+                        prefixIcon: const Icon(Icons.vpn_key_outlined, color: Color(0xFF38BDF8)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.white24),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.white24),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    if (_codeController.text.trim().isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Builder(
+                        builder: (_) {
+                          final match = widget.state.verifyAnyCode(_codeController.text.trim());
+                          final isValid = match['valid'] == true;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isValid
+                                  ? AppColors.presentGreen.withOpacity(0.2)
+                                  : AppColors.absentRed.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isValid ? AppColors.presentGreen : AppColors.absentRed.withOpacity(0.5),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isValid ? Icons.verified : Icons.info_outline,
+                                  size: 16,
+                                  color: isValid ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    isValid
+                                        ? 'Identified: ${match['title'] ?? match['name']}'
+                                        : (match['error']?.toString() ?? 'Invalid code'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isValid ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isVerifying ? null : _verifyAndProceed,
+                        icon: _isVerifying
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.arrow_forward, size: 18),
+                        label: Text(
+                          _isVerifying ? 'Verifying...' : 'Verify Code & Enter',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0284C7),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 24),
+
+              Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      'OR CONFIGURE MANUALLY',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                    ),
+                  ),
+                  const Expanded(child: Divider()),
+                ],
+              ),
+
+              const SizedBox(height: 20),
 
               // STEP 1: CLASS & SECTION SELECTION
               _buildSectionHeader('1', 'Select Class & Section'),
