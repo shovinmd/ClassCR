@@ -33,9 +33,9 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
     _selectedCrRoll = del.crRoll;
     _selectedMaleAsstRoll = del.maleAsstRoll;
     _selectedFemaleAsstRoll = del.femaleAsstRoll;
-    _crCodeCtrl = TextEditingController(text: del.crCode);
-    _maleAsstCodeCtrl = TextEditingController(text: del.maleAsstCode);
-    _femaleAsstCodeCtrl = TextEditingController(text: del.femaleAsstCode);
+    _crCodeCtrl = TextEditingController(text: del.crCode ?? '');
+    _maleAsstCodeCtrl = TextEditingController(text: del.maleAsstCode ?? '');
+    _femaleAsstCodeCtrl = TextEditingController(text: del.femaleAsstCode ?? '');
     _studentCodeCtrl = TextEditingController(text: del.studentCode);
   }
 
@@ -51,29 +51,35 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
   Future<void> _saveDelegations() async {
     setState(() => _isSavingDelegation = true);
 
-    final crStudent = widget.state.students.firstWhere(
-      (s) => s.rollNo == _selectedCrRoll,
-      orElse: () => widget.state.students.first,
-    );
-    final maleAsst = widget.state.students.firstWhere(
-      (s) => s.rollNo == _selectedMaleAsstRoll,
-      orElse: () => widget.state.students.first,
-    );
-    final femaleAsst = widget.state.students.firstWhere(
-      (s) => s.rollNo == _selectedFemaleAsstRoll,
-      orElse: () => widget.state.students.first,
-    );
+    final crStudent = _selectedCrRoll != null
+        ? widget.state.students.cast<Student?>().firstWhere(
+            (s) => s?.rollNo == _selectedCrRoll,
+            orElse: () => null,
+          )
+        : null;
+    final maleAsst = _selectedMaleAsstRoll != null
+        ? widget.state.students.cast<Student?>().firstWhere(
+            (s) => s?.rollNo == _selectedMaleAsstRoll,
+            orElse: () => null,
+          )
+        : null;
+    final femaleAsst = _selectedFemaleAsstRoll != null
+        ? widget.state.students.cast<Student?>().firstWhere(
+            (s) => s?.rollNo == _selectedFemaleAsstRoll,
+            orElse: () => null,
+          )
+        : null;
 
     await widget.state.advisorDelegate(
       classId: 'I-MCA-A',
       crRoll: _selectedCrRoll,
-      crName: crStudent.name,
+      crName: crStudent?.name,
       crCode: _crCodeCtrl.text.trim(),
       maleAsstRoll: _selectedMaleAsstRoll,
-      maleAsstName: maleAsst.name,
+      maleAsstName: maleAsst?.name,
       maleAsstCode: _maleAsstCodeCtrl.text.trim(),
       femaleAsstRoll: _selectedFemaleAsstRoll,
-      femaleAsstName: femaleAsst.name,
+      femaleAsstName: femaleAsst?.name,
       femaleAsstCode: _femaleAsstCodeCtrl.text.trim(),
       studentCode: _studentCodeCtrl.text.trim(),
     );
@@ -81,14 +87,21 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
     setState(() => _isSavingDelegation = false);
 
     if (mounted) {
+      final appointedDesc = [
+        if (crStudent != null) 'CR: ${crStudent.name}',
+        if (maleAsst != null) 'Asst CR: ${maleAsst.name}',
+        if (femaleAsst != null) 'Asst CR: ${femaleAsst.name}',
+      ].join(', ');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Appointed CR (${crStudent.name}) & Asst. CRs (${maleAsst.name}, ${femaleAsst.name})! Passcodes updated in backend.'),
+          content: Text('✅ Appointed representatives ($appointedDesc)! Passcodes updated in backend.'),
           backgroundColor: AppColors.presentGreen,
         ),
       );
     }
   }
+
 
   void _showAnnouncementDialog() {
     final titleController = TextEditingController();
@@ -562,7 +575,10 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<int>(
-                                  value: _selectedCrRoll,
+                                  value: (_selectedCrRoll != null && widget.state.students.any((s) => s.rollNo == _selectedCrRoll))
+                                      ? _selectedCrRoll
+                                      : null,
+                                  hint: const Text('-- Tap to appoint CR from roster --', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                                   isExpanded: true,
                                   items: widget.state.students.map((s) {
                                     return DropdownMenuItem<int>(
@@ -650,7 +666,10 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<int>(
-                                  value: _selectedMaleAsstRoll,
+                                  value: (_selectedMaleAsstRoll != null && widget.state.students.where((s) => s.isMale).any((s) => s.rollNo == _selectedMaleAsstRoll))
+                                      ? _selectedMaleAsstRoll
+                                      : null,
+                                  hint: const Text('-- Tap to appoint Asst. CR from roster --', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                                   isExpanded: true,
                                   items: widget.state.students.where((s) => s.isMale).map((s) {
                                     return DropdownMenuItem<int>(
@@ -738,7 +757,10 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<int>(
-                                  value: _selectedFemaleAsstRoll,
+                                  value: (_selectedFemaleAsstRoll != null && widget.state.students.where((s) => s.isFemale).any((s) => s.rollNo == _selectedFemaleAsstRoll))
+                                      ? _selectedFemaleAsstRoll
+                                      : null,
+                                  hint: const Text('-- Tap to appoint Asst. CR from roster --', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                                   isExpanded: true,
                                   items: widget.state.students.where((s) => s.isFemale).map((s) {
                                     return DropdownMenuItem<int>(

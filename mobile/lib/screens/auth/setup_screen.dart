@@ -64,7 +64,66 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
-    // 1. Universal code verification (auto-detect role, student identity, staff, advisor, HOD)
+    // 1. For CR and Assistant CR: STRICT APPOINTMENT & STUDENT IDENTITY VERIFICATION
+    if (_selectedRole == UserRole.cr || _selectedRole == UserRole.assistantCr) {
+      if (_selectedStudent == null) {
+        setState(() {
+          _errorMessage = 'Please select your name from the class roster first';
+          _isVerifying = false;
+        });
+        return;
+      }
+
+      final studentGender = _selectedStudent!.isFemale ? 'F' : 'M';
+      final verification = await widget.state.verifyRolePasscode(
+        classId: 'I-MCA-A',
+        role: _selectedRole,
+        code: enteredCode,
+        gender: studentGender,
+        rollNo: _selectedStudent!.rollNo,
+      );
+
+      if (verification['valid'] != true) {
+        setState(() {
+          _errorMessage = verification['error']?.toString() ??
+              'Invalid passcode for ${_getRoleTitle(_selectedRole)}.';
+          _isVerifying = false;
+        });
+        return;
+      }
+
+      final roleSuffix = _selectedRole == UserRole.cr
+          ? ' (CR)'
+          : ' (Asst. CR)';
+      final userName = '${_selectedStudent!.name}$roleSuffix';
+      final studentId = _selectedStudent!.enrollmentNo;
+      final classId = '$_selectedClass-$_selectedSection';
+
+      await widget.state.completeSetup(
+        role: _selectedRole,
+        name: userName,
+        classId: classId,
+        studentId: studentId,
+        gender: studentGender,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.presentGreen,
+            content: Text('Verified as ${_getRoleTitle(_selectedRole)}! Welcome $userName.'),
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainShell(state: widget.state)),
+        );
+      }
+      return;
+    }
+
+    // 2. Universal code verification (auto-detect HOD, Staff, Advisor, or Student view-only)
     final universal = widget.state.verifyAnyCode(enteredCode);
     if (universal['valid'] == true) {
       final role = universal['role'] as UserRole;
@@ -97,7 +156,7 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
-    // 2. Fallback to manual role verification
+    // 3. Fallback to manual role verification for Advisor, Staff, HOD, and Student
     final studentGender = _selectedStudent != null ? (_selectedStudent!.isFemale ? 'F' : 'M') : null;
 
     final verification = await widget.state.verifyRolePasscode(
@@ -144,10 +203,7 @@ class _SetupScreenState extends State<SetupScreen> {
         });
         return;
       }
-      final roleSuffix = _selectedRole == UserRole.cr
-          ? ' (CR)'
-          : (_selectedRole == UserRole.assistantCr ? ' (Asst. CR)' : '');
-      userName = '${_selectedStudent!.name}$roleSuffix';
+      userName = _selectedStudent!.name;
       studentId = _selectedStudent!.enrollmentNo;
     }
 
@@ -176,6 +232,7 @@ class _SetupScreenState extends State<SetupScreen> {
       );
     }
   }
+
 
   String _getRoleTitle(UserRole role) {
     switch (role) {
@@ -405,8 +462,103 @@ class _SetupScreenState extends State<SetupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Appointment Status Banner for CR & Asst. CR
+                      if (_selectedRole == UserRole.cr) ...[
+                        if (!widget.state.delegation.isCrAppointed) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFFCD34D)),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'No Class Representative has been appointed yet by the Class Advisor. CR access is currently locked.',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.verified, color: AppColors.primary, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Appointed CR: ${widget.state.delegation.crName ?? ""} (Roll #${widget.state.delegation.crRoll})\nOnly this appointed student can unlock the CR dashboard.',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.deepBlue),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ] else if (_selectedRole == UserRole.assistantCr) ...[
+                        if (!widget.state.delegation.isAsstCrAppointed) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFFCD34D)),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'No Assistant CR has been appointed yet by the Class Advisor. Assistant CR access is currently locked.',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFBBF7D0)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.verified_user, color: AppColors.presentGreen, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Appointed Assistant CRs:\n${[if (widget.state.delegation.isFemaleAsstAppointed) "• ${widget.state.delegation.femaleAsstName} (Roll #${widget.state.delegation.femaleAsstRoll})", if (widget.state.delegation.isMaleAsstAppointed) "• ${widget.state.delegation.maleAsstName} (Roll #${widget.state.delegation.maleAsstRoll})"].join("\n")}',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+
                       const Text(
-                        'Select student from I MCA (52 students):',
+                        'Select your student profile from I MCA (52 students):',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 8),
@@ -442,47 +594,105 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                       const SizedBox(height: 8),
                       if (_selectedStudent != null) ...[
-                        Row(
-                          children: [
-                            const Icon(Icons.check_circle, color: AppColors.presentGreen, size: 16),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Verified in I MCA Batch 2026–28 roster (${_selectedStudent!.isFemale ? "Girl" : "Boy"})',
-                              style: const TextStyle(fontSize: 12, color: AppColors.presentGreen, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        if (_selectedRole == UserRole.assistantCr) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: _selectedStudent!.isFemale ? const Color(0xFFFDF2F8) : const Color(0xFFF0F9FF),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: _selectedStudent!.isFemale ? const Color(0xFFF472B6) : const Color(0xFF38BDF8),
+                        if (_selectedRole == UserRole.cr) ...[
+                          if (_selectedStudent!.rollNo == widget.state.delegation.crRoll) ...[
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0FDF4),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFBBF7D0)),
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _selectedStudent!.isFemale ? Icons.female : Icons.male,
-                                  color: _selectedStudent!.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Assigned: Assistant CR (Section Coordinator)',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: _selectedStudent!.isFemale ? const Color(0xFFBE185D) : const Color(0xFF0369A1),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle, color: AppColors.presentGreen, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Verified Appointed CR: #${_selectedStudent!.rollNo} ${_selectedStudent!.name}. Enter the CR passcode below to launch.',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.presentGreen, fontWeight: FontWeight.bold),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
+                          ] else ...[
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFFCA5A5)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.cancel, color: AppColors.absentRed, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Access Restricted: ${_selectedStudent!.name} is NOT the appointed CR. Only ${widget.state.delegation.crName ?? "appointed student"} (Roll #${widget.state.delegation.crRoll ?? "N/A"}) can log in as CR.',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.absentRed, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ] else if (_selectedRole == UserRole.assistantCr) ...[
+                          if (_selectedStudent!.rollNo == widget.state.delegation.femaleAsstRoll ||
+                              _selectedStudent!.rollNo == widget.state.delegation.maleAsstRoll) ...[
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0FDF4),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFBBF7D0)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle, color: AppColors.presentGreen, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Verified Appointed Assistant CR: #${_selectedStudent!.rollNo} ${_selectedStudent!.name}. Enter your Assistant CR passcode below.',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.presentGreen, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFFCA5A5)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.cancel, color: AppColors.absentRed, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Access Restricted: ${_selectedStudent!.name} is NOT appointed as Assistant CR. Only appointed Assistant CRs can log in.',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.absentRed, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ] else ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.check_circle, color: AppColors.presentGreen, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Verified in I MCA Batch 2026–28 roster (${_selectedStudent!.isFemale ? "Girl" : "Boy"})',
+                                style: const TextStyle(fontSize: 12, color: AppColors.presentGreen, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
                         ],
                       ],
@@ -490,6 +700,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   ),
                 ),
               ],
+
 
               const SizedBox(height: 20),
 

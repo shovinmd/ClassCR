@@ -470,15 +470,15 @@ const db = {
       classId: 'I-MCA-A',
       advisorName: 'Mrs. V. Nandhini, AP/CA',
       advisorCode: 'NAVI2026',
-      crRoll: 31,
-      crName: 'MUTHUVEL R',
-      crCode: 'CR2026',
-      maleAsstRoll: 45,
-      maleAsstName: 'SHOVIN MICHEL DAVID',
-      maleAsstCode: 'ACR2026',
-      femaleAsstRoll: 13,
-      femaleAsstName: 'DHIVYALAKSHMI H',
-      femaleAsstCode: 'ACR2026',
+      crRoll: null,
+      crName: null,
+      crCode: null,
+      maleAsstRoll: null,
+      maleAsstName: null,
+      maleAsstCode: null,
+      femaleAsstRoll: null,
+      femaleAsstName: null,
+      femaleAsstCode: null,
       studentCode: 'STU2026'
     }
   },
@@ -489,20 +489,21 @@ const db = {
         classId,
         advisorName: 'Mrs. V. Nandhini, AP/CA',
         advisorCode: 'NAVI2026',
-        crRoll: 31,
-        crName: 'MUTHUVEL R',
-        crCode: 'CR2026',
-        maleAsstRoll: 45,
-        maleAsstName: 'SHOVIN MICHEL DAVID',
-        maleAsstCode: 'ACR2026',
-        femaleAsstRoll: 13,
-        femaleAsstName: 'DHIVYALAKSHMI H',
-        femaleAsstCode: 'ACR2026',
+        crRoll: null,
+        crName: null,
+        crCode: null,
+        maleAsstRoll: null,
+        maleAsstName: null,
+        maleAsstCode: null,
+        femaleAsstRoll: null,
+        femaleAsstName: null,
+        femaleAsstCode: null,
         studentCode: 'STU2026'
       };
     }
     return this.delegations[classId];
   },
+
 
   async adminAssignAdvisor({ classId = 'I-MCA-A', advisorName, advisorCode }) {
     const cur = await this.getDelegation(classId);
@@ -590,43 +591,80 @@ const db = {
         };
       }
     } else if (role === 'cr') {
-      const match = entered === del.crCode || entered === 'CR2026';
+      if (!del.crRoll || !del.crCode) {
+        return { valid: false, error: 'No Class Representative has been appointed by the Class Advisor yet.' };
+      }
+      if (!rollNo) {
+        return { valid: false, error: 'Please select your student name from the roster.' };
+      }
+      if (Number(rollNo) !== Number(del.crRoll)) {
+        return {
+          valid: false,
+          error: `Access Denied: You are not the appointed Class Representative. Only ${del.crName || 'Roll #' + del.crRoll} can access the CR dashboard.`
+        };
+      }
+      const match = entered === (del.crCode || '').trim().toUpperCase();
       if (match) {
         return {
           valid: true,
-          name: del.crName,
+          name: del.crName || 'Class Representative (CR)',
           role: 'cr',
           classId,
           rollNo: del.crRoll,
+          gender: gender || 'M'
+        };
+      } else {
+        return { valid: false, error: 'Invalid CR passcode. Please check with your Class Advisor.' };
+      }
+    } else if (role === 'assistantCr') {
+      const hasFemaleAsst = del.femaleAsstRoll && del.femaleAsstCode;
+      const hasMaleAsst = del.maleAsstRoll && del.maleAsstCode;
+
+      if (!hasFemaleAsst && !hasMaleAsst) {
+        return { valid: false, error: 'No Assistant Class Representative has been appointed by the Class Advisor yet.' };
+      }
+      if (!rollNo) {
+        return { valid: false, error: 'Please select your student name from the roster.' };
+      }
+
+      const isFemaleAsst = hasFemaleAsst && Number(rollNo) === Number(del.femaleAsstRoll);
+      const isMaleAsst = hasMaleAsst && Number(rollNo) === Number(del.maleAsstRoll);
+
+      if (!isFemaleAsst && !isMaleAsst) {
+        const asstsList = [];
+        if (hasFemaleAsst) asstsList.push(`${del.femaleAsstName || 'Female Asst. CR'} (Roll #${del.femaleAsstRoll})`);
+        if (hasMaleAsst) asstsList.push(`${del.maleAsstName || 'Male Asst. CR'} (Roll #${del.maleAsstRoll})`);
+        const assts = asstsList.join(' or ');
+        return {
+          valid: false,
+          error: `Access Denied: You are not appointed as Assistant CR. Only appointed Assistant CRs (${assts}) can access this dashboard.`
+        };
+      }
+
+      if (isFemaleAsst && entered === (del.femaleAsstCode || '').trim().toUpperCase()) {
+        return {
+          valid: true,
+          name: del.femaleAsstName || 'Assistant CR',
+          role: 'assistantCr',
+          classId,
+          rollNo: del.femaleAsstRoll,
+          gender: 'F'
+        };
+      }
+      if (isMaleAsst && entered === (del.maleAsstCode || '').trim().toUpperCase()) {
+        return {
+          valid: true,
+          name: del.maleAsstName || 'Assistant CR',
+          role: 'assistantCr',
+          classId,
+          rollNo: del.maleAsstRoll,
           gender: 'M'
         };
       }
-    } else if (role === 'assistantCr') {
-      const matchMale = entered === del.maleAsstCode || entered === 'ACR2026' || entered === 'MACR2026';
-      const matchFemale = entered === del.femaleAsstCode || entered === 'ACR2026' || entered === 'FACR2026';
 
-      if (gender === 'F' || (matchFemale && !matchMale)) {
-        if (matchFemale || entered === 'ACR2026') {
-          return {
-            valid: true,
-            name: del.femaleAsstName,
-            role: 'assistantCr',
-            classId,
-            rollNo: del.femaleAsstRoll,
-            gender: 'F'
-          };
-        }
-      } else if (matchMale || matchFemale) {
-        return {
-          valid: true,
-          name: (gender === 'F') ? del.femaleAsstName : del.maleAsstName,
-          role: 'assistantCr',
-          classId,
-          rollNo: (gender === 'F') ? del.femaleAsstRoll : del.maleAsstRoll,
-          gender: gender || 'M'
-        };
-      }
-    } else if (role === 'student') {
+      return { valid: false, error: 'Invalid Assistant CR passcode. Please check with your Class Advisor.' };
+    }
+ else if (role === 'student') {
       const isClassCode = entered === del.studentCode || entered === 'STU2026' || entered === '123456';
 
       let matched = null;

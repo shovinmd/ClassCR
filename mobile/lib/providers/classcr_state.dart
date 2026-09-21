@@ -282,30 +282,68 @@ class ClassCRState extends ChangeNotifier {
       classId: classId,
       advisorName: _delegation.advisorName,
       advisorCode: _delegation.advisorCode,
-      crRoll: crRoll ?? _delegation.crRoll,
-      crName: crName ?? _delegation.crName,
-      crCode: (crCode ?? _delegation.crCode).toUpperCase(),
-      maleAsstRoll: maleAsstRoll ?? _delegation.maleAsstRoll,
-      maleAsstName: maleAsstName ?? _delegation.maleAsstName,
-      maleAsstCode: (maleAsstCode ?? _delegation.maleAsstCode).toUpperCase(),
-      femaleAsstRoll: femaleAsstRoll ?? _delegation.femaleAsstRoll,
-      femaleAsstName: femaleAsstName ?? _delegation.femaleAsstName,
-      femaleAsstCode: (femaleAsstCode ?? _delegation.femaleAsstCode).toUpperCase(),
+      crRoll: crRoll,
+      crName: crName,
+      crCode: (crCode != null && crCode.isNotEmpty) ? crCode.toUpperCase() : null,
+      maleAsstRoll: maleAsstRoll,
+      maleAsstName: maleAsstName,
+      maleAsstCode: (maleAsstCode != null && maleAsstCode.isNotEmpty) ? maleAsstCode.toUpperCase() : null,
+      femaleAsstRoll: femaleAsstRoll,
+      femaleAsstName: femaleAsstName,
+      femaleAsstCode: (femaleAsstCode != null && femaleAsstCode.isNotEmpty) ? femaleAsstCode.toUpperCase() : null,
       studentCode: (studentCode ?? _delegation.studentCode).toUpperCase(),
     );
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    if (crName != null) await prefs.setString('classcr_delegation_cr_name', crName);
-    if (crRoll != null) await prefs.setInt('classcr_delegation_cr_roll', crRoll);
-    if (crCode != null) await prefs.setString('classcr_delegation_cr_code', crCode.toUpperCase());
-    if (maleAsstName != null) await prefs.setString('classcr_delegation_male_asst_name', maleAsstName);
-    if (maleAsstRoll != null) await prefs.setInt('classcr_delegation_male_asst_roll', maleAsstRoll);
-    if (maleAsstCode != null) await prefs.setString('classcr_delegation_male_asst_code', maleAsstCode.toUpperCase());
-    if (femaleAsstName != null) await prefs.setString('classcr_delegation_female_asst_name', femaleAsstName);
-    if (femaleAsstRoll != null) await prefs.setInt('classcr_delegation_female_asst_roll', femaleAsstRoll);
-    if (femaleAsstCode != null) await prefs.setString('classcr_delegation_female_asst_code', femaleAsstCode.toUpperCase());
-    if (studentCode != null) await prefs.setString('classcr_delegation_student_code', studentCode.toUpperCase());
+    if (crName != null) {
+      await prefs.setString('classcr_delegation_cr_name', crName);
+    } else {
+      await prefs.remove('classcr_delegation_cr_name');
+    }
+    if (crRoll != null) {
+      await prefs.setInt('classcr_delegation_cr_roll', crRoll);
+    } else {
+      await prefs.remove('classcr_delegation_cr_roll');
+    }
+    if (crCode != null) {
+      await prefs.setString('classcr_delegation_cr_code', crCode.toUpperCase());
+    } else {
+      await prefs.remove('classcr_delegation_cr_code');
+    }
+    if (maleAsstName != null) {
+      await prefs.setString('classcr_delegation_male_asst_name', maleAsstName);
+    } else {
+      await prefs.remove('classcr_delegation_male_asst_name');
+    }
+    if (maleAsstRoll != null) {
+      await prefs.setInt('classcr_delegation_male_asst_roll', maleAsstRoll);
+    } else {
+      await prefs.remove('classcr_delegation_male_asst_roll');
+    }
+    if (maleAsstCode != null) {
+      await prefs.setString('classcr_delegation_male_asst_code', maleAsstCode.toUpperCase());
+    } else {
+      await prefs.remove('classcr_delegation_male_asst_code');
+    }
+    if (femaleAsstName != null) {
+      await prefs.setString('classcr_delegation_female_asst_name', femaleAsstName);
+    } else {
+      await prefs.remove('classcr_delegation_female_asst_name');
+    }
+    if (femaleAsstRoll != null) {
+      await prefs.setInt('classcr_delegation_female_asst_roll', femaleAsstRoll);
+    } else {
+      await prefs.remove('classcr_delegation_female_asst_roll');
+    }
+    if (femaleAsstCode != null) {
+      await prefs.setString('classcr_delegation_female_asst_code', femaleAsstCode.toUpperCase());
+    } else {
+      await prefs.remove('classcr_delegation_female_asst_code');
+    }
+    if (studentCode != null) {
+      await prefs.setString('classcr_delegation_student_code', studentCode.toUpperCase());
+    }
 
     return await ApiService.advisorDelegate(
       classId: classId,
@@ -358,26 +396,95 @@ class ClassCRState extends ChangeNotifier {
         return {'valid': true, 'role': 'staff', 'name': 'Subject Teacher / Faculty', 'classId': classId};
       }
     } else if (role == UserRole.cr) {
-      if (entered == _delegation.crCode || entered == 'CR2026') {
-        return {'valid': true, 'role': 'cr', 'name': _delegation.crName, 'rollNo': _delegation.crRoll, 'classId': classId, 'gender': 'M'};
+      if (!_delegation.isCrAppointed) {
+        return {
+          'valid': false,
+          'error': 'No Class Representative has been appointed by the Class Advisor yet.',
+        };
       }
-    } else if (role == UserRole.assistantCr) {
-      final matchMale = entered == _delegation.maleAsstCode || entered == 'ACR2026' || entered == 'MACR2026';
-      final matchFemale = entered == _delegation.femaleAsstCode || entered == 'ACR2026' || entered == 'FACR2026';
-      if (gender == 'F' || (matchFemale && !matchMale)) {
-        if (matchFemale || entered == 'ACR2026') {
-          return {'valid': true, 'role': 'assistantCr', 'name': _delegation.femaleAsstName, 'rollNo': _delegation.femaleAsstRoll, 'classId': classId, 'gender': 'F'};
-        }
-      } else if (matchMale || matchFemale) {
+      if (rollNo == null) {
+        return {
+          'valid': false,
+          'error': 'Please select your student name from the roster.',
+        };
+      }
+      if (rollNo != _delegation.crRoll) {
+        final crDisplay = _delegation.crName != null && _delegation.crName!.isNotEmpty
+            ? '${_delegation.crName} (Roll #${_delegation.crRoll})'
+            : 'Roll #${_delegation.crRoll}';
+        return {
+          'valid': false,
+          'error': 'Access Denied: You are not the appointed Class Representative. Only $crDisplay can access the CR dashboard.',
+        };
+      }
+      if (entered == _delegation.crCode!.trim().toUpperCase()) {
         return {
           'valid': true,
-          'role': 'assistantCr',
-          'name': gender == 'F' ? _delegation.femaleAsstName : _delegation.maleAsstName,
-          'rollNo': gender == 'F' ? _delegation.femaleAsstRoll : _delegation.maleAsstRoll,
+          'role': 'cr',
+          'name': _delegation.crName ?? 'Class Representative (CR)',
+          'rollNo': _delegation.crRoll,
           'classId': classId,
           'gender': gender ?? 'M',
         };
+      } else {
+        return {
+          'valid': false,
+          'error': 'Invalid CR passcode. Please check with your Class Advisor.',
+        };
       }
+    } else if (role == UserRole.assistantCr) {
+      final isFemaleAsst = _delegation.isFemaleAsstAppointed && rollNo == _delegation.femaleAsstRoll;
+      final isMaleAsst = _delegation.isMaleAsstAppointed && rollNo == _delegation.maleAsstRoll;
+
+      if (!_delegation.isAsstCrAppointed) {
+        return {
+          'valid': false,
+          'error': 'No Assistant Class Representative has been appointed by the Class Advisor yet.',
+        };
+      }
+      if (rollNo == null) {
+        return {
+          'valid': false,
+          'error': 'Please select your student name from the roster.',
+        };
+      }
+
+      if (!isFemaleAsst && !isMaleAsst) {
+        final assts = [
+          if (_delegation.isFemaleAsstAppointed) '${_delegation.femaleAsstName ?? "Female Asst. CR"} (Roll #${_delegation.femaleAsstRoll})',
+          if (_delegation.isMaleAsstAppointed) '${_delegation.maleAsstName ?? "Male Asst. CR"} (Roll #${_delegation.maleAsstRoll})',
+        ].join(' or ');
+        return {
+          'valid': false,
+          'error': 'Access Denied: You are not appointed as Assistant CR. Only appointed Assistant CRs ($assts) can access this dashboard.',
+        };
+      }
+
+      if (isFemaleAsst && entered == _delegation.femaleAsstCode!.trim().toUpperCase()) {
+        return {
+          'valid': true,
+          'role': 'assistantCr',
+          'name': _delegation.femaleAsstName ?? 'Assistant CR',
+          'rollNo': _delegation.femaleAsstRoll,
+          'classId': classId,
+          'gender': 'F',
+        };
+      }
+      if (isMaleAsst && entered == _delegation.maleAsstCode!.trim().toUpperCase()) {
+        return {
+          'valid': true,
+          'role': 'assistantCr',
+          'name': _delegation.maleAsstName ?? 'Assistant CR',
+          'rollNo': _delegation.maleAsstRoll,
+          'classId': classId,
+          'gender': 'M',
+        };
+      }
+
+      return {
+        'valid': false,
+        'error': 'Invalid Assistant CR passcode. Please check with your Class Advisor.',
+      };
     } else if (role == UserRole.student) {
       if (entered == _delegation.studentCode || entered == 'STU2026' || entered == '123456') {
         return {'valid': true, 'role': 'student', 'classId': classId};
@@ -420,6 +527,7 @@ class ClassCRState extends ChangeNotifier {
 
     return {'valid': false, 'error': 'Invalid verification passcode'};
   }
+
 
   // Universal Code Verification: instantly deduces role & identity from passcode
   Map<String, dynamic> verifyAnyCode(String rawCode) {
@@ -476,45 +584,9 @@ class ClassCRState extends ChangeNotifier {
       }
     }
 
-    // 4. CR Passcodes
-    if (code == 'CR2026' || code == _delegation.crCode.toUpperCase()) {
-      return {
-        'valid': true,
-        'role': UserRole.cr,
-        'name': _delegation.crName.isNotEmpty ? '${_delegation.crName} (CR)' : 'AASIM S (CR)',
-        'studentId': '260192',
-        'rollNo': _delegation.crRoll,
-        'classId': 'I-MCA-A',
-        'gender': 'M',
-        'title': 'Class Representative (CR) • ${_delegation.crName}',
-      };
-    }
+    // Note: CR and Assistant CR cannot be auto-granted via universal code alone.
+    // They strictly require advisor appointment and student identity verification from the roster.
 
-    // 5. Assistant CR Passcodes
-    if (code == 'ACR2026' || code == 'FACR2026' || code == _delegation.femaleAsstCode.toUpperCase()) {
-      return {
-        'valid': true,
-        'role': UserRole.assistantCr,
-        'name': _delegation.femaleAsstName.isNotEmpty ? '${_delegation.femaleAsstName} (Asst. CR)' : 'DHIVYALAKSHMI H (Asst. CR)',
-        'studentId': '260311',
-        'rollNo': _delegation.femaleAsstRoll,
-        'classId': 'I-MCA-A',
-        'gender': 'F',
-        'title': 'Assistant CR (Female) • ${_delegation.femaleAsstName}',
-      };
-    }
-    if (code == 'MACR2026' || code == _delegation.maleAsstCode.toUpperCase()) {
-      return {
-        'valid': true,
-        'role': UserRole.assistantCr,
-        'name': _delegation.maleAsstName.isNotEmpty ? '${_delegation.maleAsstName} (Asst. CR)' : 'ABDUL MALIK A (Asst. CR)',
-        'studentId': '260008',
-        'rollNo': _delegation.maleAsstRoll,
-        'classId': 'I-MCA-A',
-        'gender': 'M',
-        'title': 'Assistant CR (Male) • ${_delegation.maleAsstName}',
-      };
-    }
 
     // 6. Generic Student Passcodes
     if (code == 'STU2026' || code == '123456' || code == _delegation.studentCode.toUpperCase()) {
@@ -558,7 +630,7 @@ class ClassCRState extends ChangeNotifier {
 
     return {
       'valid': false,
-      'error': 'Unrecognized code. Enter your ClassCR code (e.g. CCR-0001), CR2026, ACR2026, ADV2026, STAFF2026, or HOD2026.',
+      'error': 'Unrecognized code. Enter your student ClassCR code (e.g. CCR-0001), or select your role to verify.',
     };
   }
 
