@@ -32,20 +32,22 @@ const supabase = createClient(supabaseUrl, activeKey, {
 });
 
 const femaleRolls = new Set([
-  5, 6, 9, 11, 12, 13, 15, 19, 20, 21, 23, 28, 31, 32, 34, 37, 41, 47, 48, 50, 51, 52,
-  29, 33, 35, 38, 42 // prior rolls compatibility
+  5, 6, 10, 11, 12, 13, 15, 20, 21, 22, 24, 29, 32, 33, 35, 38, 41, 47, 48, 50, 51, 52,
+  9, 19, 23, 28, 31, 34, 37, 42 // prior compatibility
 ]);
 
 // Helper to map DB student row (snake_case) to client student (camelCase)
 function mapStudent(row) {
   if (!row) return null;
   const roll = row.roll_no !== undefined ? row.roll_no : row.rollNo;
+  const ccrCode = row.ccr_code || row.ccrCode || `CCR-${String(roll).padStart(4, '0')}`;
   return {
     rollNo: roll,
     enrollmentNo: row.enrollment_no !== undefined ? row.enrollment_no : row.enrollmentNo,
     name: row.name,
     dob: row.dob,
     gender: row.gender || (femaleRolls.has(roll) ? 'F' : 'M'),
+    ccrCode: ccrCode,
     classId: row.class_id !== undefined ? row.class_id : (row.classId || 'I-MCA-A'),
     department: row.department || 'MCA'
   };
@@ -173,13 +175,13 @@ const memoryStore = {
       absentCount: 9,
       absentStudents: [
         { rollNo: 13, name: 'DHIVYALAKSHMI H', enrollmentNo: '260311' },
-        { rollNo: 26, name: 'MAHESH KUMAR.R', enrollmentNo: '260367' },
-        { rollNo: 27, name: 'MANIKANDAN D', enrollmentNo: '260345' },
-        { rollNo: 30, name: 'MUTHUVEL R', enrollmentNo: '260320' },
-        { rollNo: 33, name: 'NETHAJI.V', enrollmentNo: '260333' },
-        { rollNo: 36, name: 'PRITHEEVIRAJ.S', enrollmentNo: '260405' },
-        { rollNo: 43, name: 'SANJAY VIGNESHWARAN J', enrollmentNo: '260435' },
-        { rollNo: 44, name: 'SATHYA.P', enrollmentNo: '260368' },
+        { rollNo: 25, name: 'LOKESH V', enrollmentNo: '260364' },
+        { rollNo: 27, name: 'MAHESH KUMAR R', enrollmentNo: '260367' },
+        { rollNo: 28, name: 'MANIKANDAN D', enrollmentNo: '260345' },
+        { rollNo: 31, name: 'MUTHUVEL R', enrollmentNo: '260320' },
+        { rollNo: 34, name: 'NETHAJI V', enrollmentNo: '260333' },
+        { rollNo: 37, name: 'PRITHEEVIRAJ S', enrollmentNo: '260405' },
+        { rollNo: 44, name: 'SATHYA P', enrollmentNo: '260368' },
         { rollNo: 52, name: 'TASFIYA FARVIN S', enrollmentNo: '260738' }
       ],
       submittedAt: '09:18 AM',
@@ -458,7 +460,7 @@ const db = {
       classId: 'I-MCA-A',
       advisorName: 'Mrs. V. Nandhini, AP/CA',
       advisorCode: 'NAVI2026',
-      crRoll: 30,
+      crRoll: 31,
       crName: 'MUTHUVEL R',
       crCode: 'CR2026',
       maleAsstRoll: 45,
@@ -477,7 +479,7 @@ const db = {
         classId,
         advisorName: 'Mrs. V. Nandhini, AP/CA',
         advisorCode: 'NAVI2026',
-        crRoll: 30,
+        crRoll: 31,
         crName: 'MUTHUVEL R',
         crCode: 'CR2026',
         maleAsstRoll: 45,
@@ -543,7 +545,7 @@ const db = {
     return cur;
   },
 
-  async verifyPasscode({ classId = 'I-MCA-A', role, code, gender }) {
+  async verifyPasscode({ classId = 'I-MCA-A', role, code, gender, rollNo }) {
     const del = await this.getDelegation(classId);
     const entered = (code || '').trim().toUpperCase();
 
@@ -605,11 +607,34 @@ const db = {
         };
       }
     } else if (role === 'student') {
-      const match = entered === del.studentCode || entered === 'STU2026' || entered === '123456';
-      if (match) {
+      const isClassCode = entered === del.studentCode || entered === 'STU2026' || entered === '123456';
+
+      let matched = null;
+      if (rollNo) {
+        matched = fallbackStudents.find(s => s.rollNo === Number(rollNo));
+      }
+
+      const isCcrMatch = matched && (
+        entered === (matched.ccrCode || '').toUpperCase() ||
+        entered === `CCR-${String(matched.rollNo).padStart(4, '0')}`
+      );
+
+      if (!matched && entered.startsWith('CCR-')) {
+        matched = fallbackStudents.find(s =>
+          (s.ccrCode || '').toUpperCase() === entered ||
+          `CCR-${String(s.rollNo).padStart(4, '0')}` === entered
+        );
+      }
+
+      if (isClassCode || isCcrMatch || (matched && entered.startsWith('CCR-'))) {
         return {
           valid: true,
           role: 'student',
+          name: matched ? matched.name : 'Student',
+          rollNo: matched ? matched.rollNo : rollNo,
+          enrollmentNo: matched ? matched.enrollmentNo : null,
+          gender: matched ? matched.gender : (gender || 'M'),
+          ccrCode: matched ? matched.ccrCode : entered,
           classId
         };
       }

@@ -54,6 +54,7 @@ class Student {
   final String name;
   final String? dob;
   final String gender; // 'M' or 'F'
+  final String ccrCode;
   final String classId;
   final String department;
 
@@ -63,23 +64,27 @@ class Student {
     required this.name,
     this.dob,
     this.gender = 'M',
+    this.ccrCode = '',
     this.classId = 'I-MCA-A',
     this.department = 'MCA',
   });
+
+  String get code => ccrCode.isNotEmpty ? ccrCode : 'CCR-${rollNo.toString().padLeft(4, '0')}';
 
   bool get isFemale => gender == 'F';
   bool get isMale => gender != 'F';
 
   static const Set<int> femaleRollNumbers = {
-    // Current adjusted rolls for all 22 female students:
-    5, 6, 9, 11, 12, 13, 15, 19, 20, 21, 23, 28, 31, 32, 34, 37, 41, 47, 48, 50, 51, 52,
-    // Original list rolls for backwards compatibility:
-    29, 33, 35, 38, 42
+    // Current official roster rolls for all 22 female students:
+    5, 6, 10, 11, 12, 13, 15, 20, 21, 22, 24, 29, 32, 33, 35, 38, 41, 47, 48, 50, 51, 52,
+    // Prior compatibility:
+    9, 19, 23, 28, 31, 34, 37, 42
   };
 
   factory Student.fromJson(Map<String, dynamic> json) {
     final roll = json['rollNo'] is int ? json['rollNo'] : int.tryParse(json['rollNo']?.toString() ?? '0') ?? 0;
     final inferredGender = json['gender']?.toString() ?? (femaleRollNumbers.contains(roll) ? 'F' : 'M');
+    final code = json['ccrCode']?.toString() ?? json['ccr_code']?.toString() ?? 'CCR-${roll.toString().padLeft(4, '0')}';
 
     return Student(
       rollNo: roll,
@@ -87,6 +92,7 @@ class Student {
       name: json['name'].toString(),
       dob: json['dob']?.toString(),
       gender: inferredGender,
+      ccrCode: code,
       classId: json['classId']?.toString() ?? 'I-MCA-A',
       department: json['department']?.toString() ?? 'MCA',
     );
@@ -98,6 +104,7 @@ class Student {
     'name': name,
     'dob': dob,
     'gender': gender,
+    'ccrCode': code,
     'classId': classId,
     'department': department,
   };
@@ -243,7 +250,7 @@ class ClassDelegation {
     required this.classId,
     this.advisorName = 'Prof. Nandhini G (Navi Ma\'am)',
     this.advisorCode = 'NAVI2026',
-    this.crRoll = 30,
+    this.crRoll = 31,
     this.crName = 'MUTHUVEL R',
     this.crCode = 'CR2026',
     this.maleAsstRoll = 45,
@@ -260,7 +267,7 @@ class ClassDelegation {
       classId: json['classId']?.toString() ?? 'I-MCA-A',
       advisorName: json['advisorName']?.toString() ?? 'Prof. Nandhini G (Navi Ma\'am)',
       advisorCode: json['advisorCode']?.toString() ?? 'NAVI2026',
-      crRoll: json['crRoll'] is int ? json['crRoll'] : int.tryParse(json['crRoll']?.toString() ?? '30') ?? 30,
+      crRoll: json['crRoll'] is int ? json['crRoll'] : int.tryParse(json['crRoll']?.toString() ?? '31') ?? 31,
       crName: json['crName']?.toString() ?? 'MUTHUVEL R',
       crCode: json['crCode']?.toString() ?? 'CR2026',
       maleAsstRoll: json['maleAsstRoll'] is int ? json['maleAsstRoll'] : int.tryParse(json['maleAsstRoll']?.toString() ?? '45') ?? 45,

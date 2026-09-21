@@ -268,6 +268,7 @@ class ClassCRState extends ChangeNotifier {
     required UserRole role,
     required String code,
     String? gender,
+    int? rollNo,
   }) async {
     final entered = code.trim().toUpperCase();
 
@@ -277,6 +278,7 @@ class ClassCRState extends ChangeNotifier {
       role: role.name,
       code: entered,
       gender: gender,
+      rollNo: rollNo,
     );
     if (remoteRes != null) {
       return remoteRes;
@@ -315,6 +317,40 @@ class ClassCRState extends ChangeNotifier {
     } else if (role == UserRole.student) {
       if (entered == _delegation.studentCode || entered == 'STU2026' || entered == '123456') {
         return {'valid': true, 'role': 'student', 'classId': classId};
+      }
+      // Check individual student ClassCR code
+      if (rollNo != null) {
+        final expectedCode = 'CCR-${rollNo.toString().padLeft(4, '0')}';
+        if (entered == expectedCode) {
+          final studentList = _students;
+          final student = studentList.cast<Student?>().firstWhere(
+                (s) => s?.rollNo == rollNo,
+                orElse: () => null,
+              );
+          return {
+            'valid': true,
+            'role': 'student',
+            'classId': classId,
+            'name': student?.name ?? '',
+            'rollNo': rollNo,
+            'code': entered,
+          };
+        }
+      } else {
+        final match = _students.cast<Student?>().firstWhere(
+              (s) => s != null && s.code.toUpperCase() == entered,
+              orElse: () => null,
+            );
+        if (match != null) {
+          return {
+            'valid': true,
+            'role': 'student',
+            'classId': classId,
+            'name': match.name,
+            'rollNo': match.rollNo,
+            'code': entered,
+          };
+        }
       }
     }
 

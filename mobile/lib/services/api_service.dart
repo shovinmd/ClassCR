@@ -234,6 +234,7 @@ class ApiService {
     required String role,
     required String code,
     String? gender,
+    int? rollNo,
   }) async {
     try {
       final response = await http
@@ -245,6 +246,7 @@ class ApiService {
               'role': role,
               'code': code,
               'gender': gender,
+              'rollNo': rollNo,
             }),
           )
           .timeout(const Duration(seconds: 3));

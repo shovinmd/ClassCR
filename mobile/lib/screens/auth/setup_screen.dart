@@ -30,6 +30,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
   String _errorMessage = '';
   bool _isVerifying = false;
+  bool _obscurePasscode = true;
 
   @override
   void initState() {
@@ -70,6 +71,7 @@ class _SetupScreenState extends State<SetupScreen> {
       role: _selectedRole,
       code: enteredCode,
       gender: studentGender,
+      rollNo: _selectedStudent?.rollNo,
     );
 
     if (verification['valid'] != true) {
@@ -79,6 +81,15 @@ class _SetupScreenState extends State<SetupScreen> {
         _isVerifying = false;
       });
       return;
+    }
+
+    // If individual student matched via ClassCR code, auto-select if not yet selected
+    if (_selectedRole == UserRole.student && _selectedStudent == null && verification['rollNo'] != null) {
+      final matchedRoll = verification['rollNo'] as int;
+      _selectedStudent = widget.state.students.cast<Student?>().firstWhere(
+            (s) => s?.rollNo == matchedRoll,
+            orElse: () => null,
+          );
     }
 
     String userName = '';
@@ -462,11 +473,29 @@ class _SetupScreenState extends State<SetupScreen> {
                     TextField(
                       controller: _codeController,
                       textCapitalization: TextCapitalization.characters,
-                      obscureText: true,
+                      obscureText: _selectedRole == UserRole.student ? false : _obscurePasscode,
                       decoration: InputDecoration(
-                        labelText: 'Passcode for ${_getRoleTitle(_selectedRole)}',
-                        hintText: 'Enter college registration passcode',
+                        labelText: _selectedRole == UserRole.student
+                            ? 'ClassCR Code (e.g. CCR-0001 or STU2026)'
+                            : 'Passcode for ${_getRoleTitle(_selectedRole)}',
+                        hintText: _selectedRole == UserRole.student
+                            ? 'Enter individual CCR code (e.g. CCR-0001)'
+                            : 'Enter authorized passcode',
                         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                        suffixIcon: _selectedRole == UserRole.student
+                            ? null
+                            : IconButton(
+                                icon: Icon(
+                                  _obscurePasscode ? Icons.visibility_off : Icons.visibility,
+                                  color: AppColors.textSecondary,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePasscode = !_obscurePasscode;
+                                  });
+                                },
+                              ),
                         border: const OutlineInputBorder(),
                       ),
                     ),
@@ -475,9 +504,13 @@ class _SetupScreenState extends State<SetupScreen> {
                       children: [
                         const Icon(Icons.security, size: 14, color: AppColors.textSecondary),
                         const SizedBox(width: 6),
-                        Text(
-                          'Authorized code required to activate ${_getRoleTitle(_selectedRole)}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        Expanded(
+                          child: Text(
+                            _selectedRole == UserRole.student
+                                ? 'Use your assigned ClassCR code (e.g. CCR-0001 to CCR-0052) or class code'
+                                : 'Authorized code required to activate ${_getRoleTitle(_selectedRole)}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          ),
                         ),
                       ],
                     ),
