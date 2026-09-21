@@ -552,8 +552,8 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
 
                     const Divider(height: 28),
 
-                    // 2. MALE ASSISTANT CR
-                    const Text('Male Assistant CR (Boys Coordinator):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0369A1))),
+                    // 2. ASSISTANT CR 1
+                    const Text('Assistant CR (Section Coordinator 1):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0369A1))),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -581,9 +581,9 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                       controller: _maleAsstCodeCtrl,
                       textCapitalization: TextCapitalization.characters,
                       decoration: const InputDecoration(
-                        labelText: 'Male Asst. CR Passcode',
+                        labelText: 'Asst. CR Passcode',
                         hintText: 'e.g. ACR2026',
-                        prefixIcon: Icon(Icons.male, color: Color(0xFF0284C7), size: 18),
+                        prefixIcon: Icon(Icons.how_to_reg, color: Color(0xFF0284C7), size: 18),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -591,8 +591,8 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
 
                     const Divider(height: 28),
 
-                    // 3. FEMALE ASSISTANT CR
-                    const Text('Female Assistant CR (Girls Coordinator):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFBE185D))),
+                    // 3. ASSISTANT CR 2
+                    const Text('Assistant CR (Section Coordinator 2):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFBE185D))),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -620,9 +620,9 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                       controller: _femaleAsstCodeCtrl,
                       textCapitalization: TextCapitalization.characters,
                       decoration: const InputDecoration(
-                        labelText: 'Female Asst. CR Passcode',
+                        labelText: 'Asst. CR Passcode (Section 2)',
                         hintText: 'e.g. ACR2026',
-                        prefixIcon: Icon(Icons.female, color: Color(0xFFDB2777), size: 18),
+                        prefixIcon: Icon(Icons.how_to_reg, color: Color(0xFFDB2777), size: 18),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),

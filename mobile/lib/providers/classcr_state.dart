@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -17,6 +18,11 @@ class ClassCRState extends ChangeNotifier {
   // Setup completion state
   bool _isSetupDone = false;
   bool get isSetupDone => _isSetupDone;
+
+  // Real-time synchronization timer
+  Timer? _realtimeTimer;
+  bool _isRealtimeSyncActive = false;
+  bool get isRealtimeSyncActive => _isRealtimeSyncActive;
 
   // Active User State
   AppUser _currentUser = const AppUser(
@@ -50,11 +56,18 @@ class ClassCRState extends ChangeNotifier {
   AttendanceRecord? _currentAttendanceRecord;
   AttendanceRecord? get currentAttendanceRecord => _currentAttendanceRecord;
 
-  // Locked attendance check: once submitted, locked for CR & Asst CR
+  // Locked attendance check: once finalized and locked by CR
   bool get isAttendanceLocked =>
-      _currentAttendanceRecord != null && (_currentAttendanceRecord!.isLocked || _currentAttendanceRecord!.status == 'submitted');
+      _currentAttendanceRecord != null && _currentAttendanceRecord!.isLocked;
 
-  // Only advisor or admin can edit attendance after submission
+  // Assistant CR Verification Status
+  bool get isSectionVerifiedByAsstCr => _currentAttendanceRecord?.asstCrVerified == true;
+  String? get asstCrVerifiedBy => _currentAttendanceRecord?.asstCrVerifiedBy;
+  String? get asstCrVerifiedAt => _currentAttendanceRecord?.asstCrVerifiedAt;
+  int? get activePeriodNo => _currentAttendanceRecord?.periodNo;
+  String? get activePeriodSubject => _currentAttendanceRecord?.periodSubject;
+
+  // Only advisor or admin can edit attendance after final locked submission
   bool get canModifyAttendance =>
       !isAttendanceLocked || _currentUser.role == UserRole.advisor || _currentUser.role == UserRole.admin;
 
@@ -418,6 +431,7 @@ class ClassCRState extends ChangeNotifier {
     final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
     _absentRolls.removeAll(rolls);
     notifyListeners();
+    autoSaveRealtimeDraft();
   }
 
   void markSectionAbsent({required bool isFemale}) {
@@ -425,6 +439,121 @@ class ClassCRState extends ChangeNotifier {
     final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
     _absentRolls.addAll(rolls);
     notifyListeners();
+    autoSaveRealtimeDraft();
+  }
+
+  // Real-time synchronization methods (Zero Delay between CR and Asst. CR)
+  void startRealtimeSync() {
+    _stopRealtimeTimer();
+    _isRealtimeSyncActive = true;
+    fetchRealtimeAttendance();
+    // Poll every 3 seconds for instant real-time sync across devices
+    _realtimeTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      fetchRealtimeAttendance();
+    });
+  }
+
+  void stopRealtimeSync() {
+    _isRealtimeSyncActive = false;
+    _stopRealtimeTimer();
+  }
+
+  void _stopRealtimeTimer() {
+    _realtimeTimer?.cancel();
+    _realtimeTimer = null;
+  }
+
+  Future<void> fetchRealtimeAttendance() async {
+    if (!_isOnline) return;
+    try {
+      final remote = await ApiService.fetchTodayAttendance(
+        classId: _currentUser.classId ?? 'I-MCA-A',
+        date: _todayDate,
+      );
+      if (remote != null) {
+        final remoteSet = remote.absentRolls.toSet();
+        final hasChanged = _currentAttendanceRecord?.isLocked != remote.isLocked ||
+            _currentAttendanceRecord?.asstCrVerified != remote.asstCrVerified ||
+            _currentAttendanceRecord?.absentRolls.length != remote.absentRolls.length ||
+            !_absentRolls.containsAll(remoteSet) ||
+            !remoteSet.containsAll(_absentRolls);
+
+        if (hasChanged) {
+          _currentAttendanceRecord = remote;
+          _absentRolls.clear();
+          _absentRolls.addAll(remote.absentRolls);
+          if (remote.notes != null) _crNotes = remote.notes;
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Instant real-time background save of marks
+  Future<void> autoSaveRealtimeDraft() async {
+    if (!_isOnline || isAttendanceLocked) return;
+    try {
+      await ApiService.submitAttendance(
+        classId: _currentUser.classId ?? 'I-MCA-A',
+        date: _todayDate,
+        absentRolls: _absentRolls.toList()..sort(),
+        notes: _crNotes,
+        userRole: _currentUser.role.name,
+        userName: _currentUser.name,
+        markedByName: _currentAttendanceRecord?.markedByName ?? _currentUser.name,
+        markedByRole: _currentAttendanceRecord?.markedByRole ?? _currentUser.roleDisplayName,
+        isLocked: false,
+        asstCrVerified: isSectionVerifiedByAsstCr,
+        asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
+        asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
+      );
+    } catch (_) {}
+  }
+
+  // Assistant CR completes verification of assigned section and transmits to CR
+  Future<bool> verifyAndSendSectionToCr({String? notes}) async {
+    final now = DateTime.now();
+    final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+    final updatedRecord = (_currentAttendanceRecord ?? AttendanceRecord(
+      id: 'att_${_todayDate.replaceAll('-', '')}',
+      classId: _currentUser.classId ?? 'I-MCA-A',
+      date: _todayDate,
+      totalStudents: totalCount,
+      presentCount: presentCount,
+      absentCount: absentCount,
+      absentRolls: _absentRolls.toList()..sort(),
+      isLocked: false,
+    )).copyWith(
+      asstCrVerified: true,
+      asstCrVerifiedBy: _currentUser.name,
+      asstCrVerifiedAt: timeStr,
+      isLocked: false,
+      status: 'draft',
+      notes: notes ?? _crNotes,
+      markedByName: _currentUser.name,
+      markedByRole: _currentUser.roleDisplayName,
+    );
+
+    _currentAttendanceRecord = updatedRecord;
+    notifyListeners();
+
+    if (_isOnline) {
+      return await ApiService.submitAttendance(
+        classId: updatedRecord.classId,
+        date: updatedRecord.date,
+        absentRolls: updatedRecord.absentRolls,
+        notes: updatedRecord.notes,
+        userRole: _currentUser.role.name,
+        userName: _currentUser.name,
+        markedByName: updatedRecord.markedByName,
+        markedByRole: updatedRecord.markedByRole,
+        isLocked: false,
+        asstCrVerified: true,
+        asstCrVerifiedBy: _currentUser.name,
+        asstCrVerifiedAt: timeStr,
+      );
+    }
+    return true;
   }
 
   // Merge Boys & Girls Assistant CR records into consolidated class attendance
@@ -435,9 +564,9 @@ class ClassCRState extends ChangeNotifier {
     if (additionalAbsentees != null) {
       _absentRolls.addAll(additionalAbsentees);
     }
-    _crNotes = mergeNotes ?? 'Merged Assistant CR (Boys & Girls) attendance verified and submitted.';
+    _crNotes = mergeNotes ?? 'Merged Assistant CR section attendance verified.';
     notifyListeners();
-    return await submitAttendance();
+    return await submitAttendance(isLocked: true);
   }
 
   // Quick Mark Actions
@@ -452,6 +581,7 @@ class ClassCRState extends ChangeNotifier {
       _absentRolls.add(rollNo);
     }
     notifyListeners();
+    autoSaveRealtimeDraft();
     return true;
   }
 
@@ -459,6 +589,7 @@ class ClassCRState extends ChangeNotifier {
     if (!canModifyAttendance) return false;
     _absentRolls.clear();
     notifyListeners();
+    autoSaveRealtimeDraft();
     return true;
   }
 
@@ -466,6 +597,7 @@ class ClassCRState extends ChangeNotifier {
     if (!canModifyAttendance) return false;
     _absentRolls.addAll(_students.map((s) => s.rollNo));
     notifyListeners();
+    autoSaveRealtimeDraft();
     return true;
   }
 
@@ -474,8 +606,13 @@ class ClassCRState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Submit Attendance (Sets isLocked: true and records author attribution)
-  Future<bool> submitAttendance({String? notes}) async {
+  // Final Lock Attendance Submission (Only CR and Advisor can execute final lock)
+  Future<bool> submitAttendance({
+    String? notes,
+    bool isLocked = true,
+    int? periodNo,
+    String? periodSubject,
+  }) async {
     _crNotes = notes ?? _crNotes;
     final authorName = _currentUser.name;
     final authorRole = _currentUser.roleDisplayName;
@@ -490,12 +627,17 @@ class ClassCRState extends ChangeNotifier {
       absentRolls: _absentRolls.toList()..sort(),
       markedByName: authorName,
       markedByRole: authorRole,
-      isLocked: true,
+      isLocked: isLocked,
       lastModifiedBy: _currentAttendanceRecord?.lastModifiedBy,
-      status: 'submitted',
+      status: isLocked ? 'submitted' : 'draft',
       submittedAt: _currentAttendanceRecord?.submittedAt ?? '09:18 AM',
       notes: _crNotes,
       isSynced: _isOnline,
+      asstCrVerified: _currentAttendanceRecord?.asstCrVerified ?? false,
+      asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
+      asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
+      periodNo: periodNo ?? _currentAttendanceRecord?.periodNo ?? 1,
+      periodSubject: periodSubject ?? _currentAttendanceRecord?.periodSubject,
     );
 
     _currentAttendanceRecord = record;
@@ -518,8 +660,13 @@ class ClassCRState extends ChangeNotifier {
         userName: _currentUser.name,
         markedByName: authorName,
         markedByRole: authorRole,
-        isLocked: true,
+        isLocked: isLocked,
         lastModifiedBy: record.lastModifiedBy,
+        asstCrVerified: record.asstCrVerified,
+        asstCrVerifiedBy: record.asstCrVerifiedBy,
+        asstCrVerifiedAt: record.asstCrVerifiedAt,
+        periodNo: record.periodNo,
+        periodSubject: record.periodSubject,
       );
       if (!success) {
         await _queueRecord(record);
@@ -809,5 +956,11 @@ class ClassCRState extends ChangeNotifier {
       }
     } catch (_) {}
     return yyyyMmDd;
+  }
+
+  @override
+  void dispose() {
+    _stopRealtimeTimer();
+    super.dispose();
   }
 }

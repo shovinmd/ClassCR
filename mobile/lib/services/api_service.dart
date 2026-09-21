@@ -104,6 +104,11 @@ class ApiService {
     String? markedByRole,
     bool isLocked = true,
     String? lastModifiedBy,
+    bool asstCrVerified = false,
+    String? asstCrVerifiedBy,
+    String? asstCrVerifiedAt,
+    int? periodNo,
+    String? periodSubject,
   }) async {
     try {
       final response = await http
@@ -124,6 +129,11 @@ class ApiService {
               'markedByRole': markedByRole,
               'isLocked': isLocked,
               'lastModifiedBy': lastModifiedBy,
+              'asstCrVerified': asstCrVerified,
+              'asstCrVerifiedBy': asstCrVerifiedBy,
+              'asstCrVerifiedAt': asstCrVerifiedAt,
+              'periodNo': periodNo,
+              'periodSubject': periodSubject,
             }),
           )
           .timeout(const Duration(seconds: 4));

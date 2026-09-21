@@ -216,10 +216,10 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
   const existing = await db.getAttendanceByDate(targetClass, recordDate);
   const isAdvisorOrAdmin = req.user.role === 'advisor' || req.user.role === 'admin';
 
-  if (existing && (existing.isLocked || existing.status === 'submitted')) {
+  if (existing && existing.isLocked) {
     if (!isAdvisorOrAdmin) {
       return res.status(403).json({
-        error: 'Attendance is locked after submission. Only Class Advisor can modify attendance.',
+        error: 'Attendance is locked after final submission. Only Class Advisor can modify attendance.',
         isLocked: true,
         markedByName: existing.markedByName,
         markedByRole: existing.markedByRole
@@ -234,6 +234,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
 
   const authorName = markedByName || (existing && existing.markedByName ? existing.markedByName : (req.user.name || 'CR'));
   const authorRole = markedByRole || (existing && existing.markedByRole ? existing.markedByRole : (req.user.role === 'assistantCr' ? 'Assistant CR' : (req.user.role === 'cr' ? 'CR' : 'Advisor')));
+  const isLocked = req.body.isLocked !== undefined ? Boolean(req.body.isLocked) : (req.user.role === 'cr' && req.body.status !== 'draft');
 
   const newRecord = {
     id: `att_${recordDate.replace(/-/g, '')}`,
@@ -246,11 +247,16 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     markedBy: req.user.id || 'cr',
     markedByName: authorName,
     markedByRole: authorRole,
-    isLocked: true,
+    isLocked: isLocked,
     lastModifiedBy: isAdvisorOrAdmin && existing ? (req.user.name || 'Class Advisor') : (existing ? existing.lastModifiedBy : ''),
-    status: 'submitted',
+    status: isLocked ? 'submitted' : 'draft',
     submittedAt: existing && existing.submittedAt ? existing.submittedAt : new Date().toISOString(),
-    notes: notes || ''
+    notes: notes || '',
+    asstCrVerified: req.body.asstCrVerified !== undefined ? Boolean(req.body.asstCrVerified) : (existing ? existing.asstCrVerified : false),
+    asstCrVerifiedBy: req.body.asstCrVerifiedBy || (existing ? existing.asstCrVerifiedBy : ''),
+    asstCrVerifiedAt: req.body.asstCrVerifiedAt || (existing ? existing.asstCrVerifiedAt : ''),
+    periodNo: req.body.periodNo || (existing ? existing.periodNo : 1),
+    periodSubject: req.body.periodSubject || (existing ? existing.periodSubject : '')
   };
 
   await db.saveAttendanceRecord(newRecord);

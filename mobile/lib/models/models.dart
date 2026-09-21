@@ -35,8 +35,7 @@ class AppUser {
       case UserRole.cr:
         return 'Class Representative (CR)';
       case UserRole.assistantCr:
-        final prefix = gender == 'F' ? 'Female ' : (gender == 'M' ? 'Male ' : '');
-        return '${prefix}Assistant CR (Asst. CR)';
+        return 'Assistant CR (Asst. CR)';
       case UserRole.advisor:
         return 'Class Advisor';
       case UserRole.staff:
@@ -142,6 +141,11 @@ class AttendanceRecord {
   final String? markedByRole;
   final bool isLocked;
   final String? lastModifiedBy;
+  final bool asstCrVerified;
+  final String? asstCrVerifiedBy;
+  final String? asstCrVerifiedAt;
+  final int? periodNo;
+  final String? periodSubject;
 
   const AttendanceRecord({
     required this.id,
@@ -159,6 +163,11 @@ class AttendanceRecord {
     this.markedByRole,
     this.isLocked = true,
     this.lastModifiedBy,
+    this.asstCrVerified = false,
+    this.asstCrVerifiedBy,
+    this.asstCrVerifiedAt,
+    this.periodNo,
+    this.periodSubject,
   });
 
   AttendanceRecord copyWith({
@@ -177,6 +186,11 @@ class AttendanceRecord {
     String? markedByRole,
     bool? isLocked,
     String? lastModifiedBy,
+    bool? asstCrVerified,
+    String? asstCrVerifiedBy,
+    String? asstCrVerifiedAt,
+    int? periodNo,
+    String? periodSubject,
   }) {
     return AttendanceRecord(
       id: id ?? this.id,
@@ -194,6 +208,11 @@ class AttendanceRecord {
       markedByRole: markedByRole ?? this.markedByRole,
       isLocked: isLocked ?? this.isLocked,
       lastModifiedBy: lastModifiedBy ?? this.lastModifiedBy,
+      asstCrVerified: asstCrVerified ?? this.asstCrVerified,
+      asstCrVerifiedBy: asstCrVerifiedBy ?? this.asstCrVerifiedBy,
+      asstCrVerifiedAt: asstCrVerifiedAt ?? this.asstCrVerifiedAt,
+      periodNo: periodNo ?? this.periodNo,
+      periodSubject: periodSubject ?? this.periodSubject,
     );
   }
 
@@ -214,6 +233,11 @@ class AttendanceRecord {
       markedByRole: json['markedByRole'],
       isLocked: json['isLocked'] == true || json['status'] == 'submitted',
       lastModifiedBy: json['lastModifiedBy'],
+      asstCrVerified: json['asstCrVerified'] == true,
+      asstCrVerifiedBy: json['asstCrVerifiedBy']?.toString(),
+      asstCrVerifiedAt: json['asstCrVerifiedAt']?.toString(),
+      periodNo: json['periodNo'] is int ? json['periodNo'] : int.tryParse(json['periodNo']?.toString() ?? ''),
+      periodSubject: json['periodSubject']?.toString(),
     );
   }
 
@@ -233,6 +257,11 @@ class AttendanceRecord {
     'markedByRole': markedByRole,
     'isLocked': isLocked,
     'lastModifiedBy': lastModifiedBy,
+    'asstCrVerified': asstCrVerified,
+    'asstCrVerifiedBy': asstCrVerifiedBy,
+    'asstCrVerifiedAt': asstCrVerifiedAt,
+    'periodNo': periodNo,
+    'periodSubject': periodSubject,
   };
 }
 

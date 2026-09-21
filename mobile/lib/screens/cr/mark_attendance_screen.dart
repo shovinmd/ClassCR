@@ -19,11 +19,13 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
   String _searchQuery = '';
   String _filter = 'all'; // 'all', 'present', 'absent'
   String _sectionTab = 'all'; // 'all', 'boys', 'girls'
+  int _selectedPeriod = 1;
 
   @override
   void initState() {
     super.initState();
-    // For Assistant CR: Auto-select and prioritize their assigned section!
+    widget.state.startRealtimeSync();
+    // For Assistant CR: Auto-select and prioritize their assigned section
     if (widget.state.currentRole == UserRole.assistantCr) {
       if (widget.state.currentUser.gender == 'F') {
         _sectionTab = 'girls';
@@ -35,6 +37,7 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
 
   @override
   void dispose() {
+    widget.state.stopRealtimeSync();
     _searchController.dispose();
     super.dispose();
   }
@@ -183,25 +186,123 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Morning 1st Lecture Dispatch Notice
+                const SizedBox(height: 12),
+
+                // Assistant CR Dual-Verification Status Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: widget.state.isSectionVerifiedByAsstCr ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: widget.state.isSectionVerifiedByAsstCr ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        widget.state.isSectionVerifiedByAsstCr ? Icons.verified : Icons.pending_actions,
+                        size: 18,
+                        color: widget.state.isSectionVerifiedByAsstCr ? AppColors.presentGreen : const Color(0xFFD97706),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.state.isSectionVerifiedByAsstCr
+                              ? '✓ Section verified by Assistant CR (${widget.state.asstCrVerifiedBy ?? 'Asst. CR'} • ${widget.state.asstCrVerifiedAt ?? ''})'
+                              : '⏳ Assistant CR section check pending (CR final lock will consolidate all)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: widget.state.isSectionVerifiedByAsstCr ? const Color(0xFF166534) : const Color(0xFF92400E),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Lecture Period Dispatch Selector & Target
                 Builder(
                   builder: (_) {
-                    final pInfo = getFirstPeriodDetailsForDate();
+                    final d = DateTime.tryParse(widget.state.todayDate) ?? DateTime.now();
+                    final dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                    final dayName = dayNames[d.weekday - 1];
+                    final slot = kMcaTimeTable.firstWhere(
+                      (s) => s.day.toLowerCase() == dayName.toLowerCase(),
+                      orElse: () => kMcaTimeTable.first,
+                    );
+                    final subj = (_selectedPeriod >= 1 && _selectedPeriod <= slot.periods.length)
+                        ? slot.periods[_selectedPeriod - 1]
+                        : 'OOPS';
+                    final fac = getFacultyForSubject(subj);
+                    final isMorning = _selectedPeriod == 1;
+
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFBFDBFE)),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.wb_sunny_outlined, size: 18, color: Color(0xFF2563EB)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Morning 1st Lecture: ${pInfo['subjectAbb']} (${pInfo['time']})\nAbsent list routed to Advisor & ${pInfo['facultyName']}',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF1E40AF), fontWeight: FontWeight.w600),
+                          Row(
+                            children: [
+                              Icon(isMorning ? Icons.wb_sunny_outlined : Icons.menu_book, size: 18, color: const Color(0xFF2563EB)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  isMorning
+                                      ? 'Morning 1st Lecture • Dispatches to Advisor & $subj Faculty'
+                                      : 'Period $_selectedPeriod Lecture Log • Dispatches to $subj Faculty',
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF1E40AF), fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Faculty: ${fac?.name ?? "Subject Faculty"} (${fac?.subject ?? subj})\nAdvisor: Mrs. V. Nandhini, AP/CA',
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF1E3A8A)),
+                          ),
+                          const SizedBox(height: 8),
+                          // Period Selector Chips
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: List.generate(slot.periods.length, (pIdx) {
+                                final pNum = pIdx + 1;
+                                final pSubj = slot.periods[pIdx];
+                                final isSelected = _selectedPeriod == pNum;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setModalState(() => _selectedPeriod = pNum);
+                                    setState(() => _selectedPeriod = pNum);
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFBFDBFE),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'P$pNum: $pSubj',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: isSelected ? Colors.white : const Color(0xFF1E40AF),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
                             ),
                           ),
                         ],
@@ -233,7 +334,7 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                   )
                 else
                   Container(
-                    constraints: const BoxConstraints(maxHeight: 180),
+                    constraints: const BoxConstraints(maxHeight: 160),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(12),
@@ -294,9 +395,9 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
-                // Confirm & Submit Button
+                // Confirm Final Lock & Submit Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -304,14 +405,18 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                       final messenger = ScaffoldMessenger.of(context);
                       final nav = Navigator.of(context);
                       Navigator.pop(ctx);
-                      await widget.state.submitAttendance(notes: notesController.text.trim());
+                      await widget.state.submitAttendance(
+                        notes: notesController.text.trim(),
+                        isLocked: true,
+                        periodNo: _selectedPeriod,
+                      );
 
                       if (mounted) {
                         messenger.showSnackBar(
                           SnackBar(
                             backgroundColor: AppColors.presentGreen,
                             content: Text(
-                              'Attendance verified! ${widget.state.presentCount} Present / ${widget.state.absentCount} Absent.',
+                              '✅ Attendance Locked & Dispatched to Advisor and Period $_selectedPeriod Faculty!',
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -323,8 +428,8 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                         );
                       }
                     },
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Confirm & Generate Report'),
+                    icon: const Icon(Icons.lock_outline),
+                    label: const Text('Confirm Final Lock & Dispatch'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -336,6 +441,178 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // Modal for Assistant CR to transmit assigned section check to CR
+  void _showAsstCrSendDialog() {
+    final isFemale = widget.state.currentUser.gender == 'F';
+    final sectionStudents = widget.state.students.where((s) => isFemale ? s.isFemale : s.isMale).toList();
+    final sectionAbsentees = sectionStudents.where((s) => widget.state.isAbsent(s.rollNo)).toList();
+    final sectionPresentCount = sectionStudents.length - sectionAbsentees.length;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(
+          top: 20,
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Verify Assigned Section',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    widget.state.formattedTodayDate,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      Text('${sectionStudents.length}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text('Total Section', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text('$sectionPresentCount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.presentGreen)),
+                      const Text('Present', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text('${sectionAbsentees.length}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.absentRed)),
+                      const Text('Absent', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 18, color: Color(0xFF1D4ED8)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This transmits your section check live to CR (Muthuvel R). After final review, CR will lock and dispatch morning attendance to Class Advisor & Lecture Faculty.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF1E40AF), fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Section Absentees (${sectionAbsentees.length}):',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 6),
+            if (sectionAbsentees.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text('🎉 All section students are Present!', style: TextStyle(color: AppColors.presentGreen, fontWeight: FontWeight.bold)),
+              )
+            else
+              Container(
+                constraints: const BoxConstraints(maxHeight: 140),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: sectionAbsentees.length,
+                  itemBuilder: (_, idx) {
+                    final s = sectionAbsentees[idx];
+                    return ListTile(
+                      dense: true,
+                      visualDensity: VisualDensity.compact,
+                      leading: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: AppColors.absentRed.withOpacity(0.15),
+                        child: Text('${s.rollNo}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.absentRed)),
+                      ),
+                      title: Text(s.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      subtitle: Text(s.enrollmentNo, style: const TextStyle(fontSize: 11)),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await widget.state.verifyAndSendSectionToCr();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.presentGreen,
+                        content: Text('✅ Section attendance ($sectionPresentCount Present / ${sectionAbsentees.length} Absent) transmitted to CR live!'),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.send_rounded),
+                label: const Text('Transmit Section to CR'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -516,107 +793,164 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                       ),
                     ],
 
-                    // Assistant CR: strictly restrict to their assigned gender section (no opposite sex shown)
+                    // Assistant CR: Automatic section roster according to their profile gender (no explicit male/female tags)
                     if (widget.state.currentRole == UserRole.assistantCr) ...[
-                      if (widget.state.currentUser.gender == 'F') ...[
+                      Builder(
+                        builder: (_) {
+                          final isFemale = widget.state.currentUser.gender == 'F';
+                          final count = isFemale ? totalGirls : totalBoys;
+                          final pres = isFemale ? presentGirls : presentBoys;
+                          final abs = isFemale ? absentGirls : absentBoys;
+                          final isVerified = widget.state.isSectionVerifiedByAsstCr;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.assignment_turned_in_outlined, size: 20, color: AppColors.primary),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Assigned Section Roster ($count Students)',
+                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '$pres Present • $abs Absent',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (widget.state.canModifyAttendance) ...[
+                                      GestureDetector(
+                                        onTap: () => widget.state.markSectionPresent(isFemale: isFemale),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFDCFCE7),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Text('All P', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen)),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      GestureDetector(
+                                        onTap: () => widget.state.markSectionAbsent(isFemale: isFemale),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFEE2E2),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Text('All A', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.absentRed)),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+
+                              // Real-Time Sync & Transmission status banner
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: BoxDecoration(
+                                  color: isVerified ? const Color(0xFFF0FDF4) : const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: isVerified ? const Color(0xFF86EFAC) : const Color(0xFFBFDBFE)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isVerified ? Icons.check_circle : Icons.sync,
+                                      size: 16,
+                                      color: isVerified ? AppColors.presentGreen : const Color(0xFF2563EB),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        isVerified
+                                            ? '✓ Section verified & transmitted to CR (${widget.state.asstCrVerifiedAt ?? "Today"}) • Awaiting CR lock'
+                                            : '⚡ Real-time active: Cross-check assigned section and transmit to CR',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: isVerified ? const Color(0xFF166534) : const Color(0xFF1E40AF),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ] else ...[
+                      // CR: Real-Time Assistant CR Check Status Pill
+                      if (widget.state.currentRole == UserRole.cr) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                           margin: const EdgeInsets.only(bottom: 10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFCE7F3),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFDB2777)),
+                            color: widget.state.isSectionVerifiedByAsstCr ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: widget.state.isSectionVerifiedByAsstCr ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.female, size: 20, color: Color(0xFFDB2777)),
+                              Icon(
+                                widget.state.isSectionVerifiedByAsstCr ? Icons.verified : Icons.hourglass_top,
+                                size: 16,
+                                color: widget.state.isSectionVerifiedByAsstCr ? AppColors.presentGreen : const Color(0xFFD97706),
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  '👧 Girls Section Roster ($totalGirls Students)\n$presentGirls Present • $absentGirls Absent',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFBE185D)),
+                                  widget.state.isSectionVerifiedByAsstCr
+                                      ? '✓ Section verified by Asst. CR (${widget.state.asstCrVerifiedBy ?? 'Asst. CR'} • ${widget.state.asstCrVerifiedAt ?? ''})'
+                                      : '⏳ Asst. CR section check in progress (real-time sync active)...',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: widget.state.isSectionVerifiedByAsstCr ? const Color(0xFF166534) : const Color(0xFF92400E),
+                                  ),
                                 ),
                               ),
-                              if (widget.state.canModifyAttendance) ...[
-                                GestureDetector(
-                                  onTap: () => widget.state.markSectionPresent(isFemale: true),
-                                  child: const Text('All P', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => widget.state.markSectionAbsent(isFemale: true),
-                                  child: const Text('All A', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.absentRed)),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.circle, size: 6, color: AppColors.presentGreen),
+                                    SizedBox(width: 4),
+                                    Text('LIVE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ],
-                          ),
-                        ),
-                      ] else ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          margin: const EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0F2FE),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF0284C7)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.male, size: 20, color: Color(0xFF0284C7)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '👦 Boys Section Roster ($totalBoys Students)\n$presentBoys Present • $absentBoys Absent',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0369A1)),
-                                ),
-                              ),
-                              if (widget.state.canModifyAttendance) ...[
-                                GestureDetector(
-                                  onTap: () => widget.state.markSectionPresent(isFemale: false),
-                                  child: const Text('All P', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen)),
-                                ),
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => widget.state.markSectionAbsent(isFemale: false),
-                                  child: const Text('All A', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.absentRed)),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        // Merge Option for Assistant CR
-                        InkWell(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('🔄 Section attendance synced & merged with Class CR record!'),
-                                backgroundColor: AppColors.presentGreen,
-                              ),
-                            );
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0FDF4),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFF86EFAC)),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.call_merge, size: 16, color: AppColors.presentGreen),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Merge Section with CR Session ✓',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                       ],
-                    ] else ...[
                       // CR Section Selector Tabs (All / Boys / Girls)
                       Container(
                         padding: const EdgeInsets.all(4),
@@ -886,15 +1220,15 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                                               Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                                 decoration: BoxDecoration(
-                                                  color: student.isFemale ? const Color(0xFFFCE7F3) : const Color(0xFFE0F2FE),
+                                                  color: const Color(0xFFF1F5F9),
                                                   borderRadius: BorderRadius.circular(4),
                                                 ),
                                                 child: Text(
-                                                  student.isFemale ? '👧 Girl' : '👦 Boy',
-                                                  style: TextStyle(
+                                                  student.code,
+                                                  style: const TextStyle(
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
-                                                    color: student.isFemale ? const Color(0xFFDB2777) : const Color(0xFF0284C7),
+                                                    color: AppColors.textSecondary,
                                                   ),
                                                 ),
                                               ),
@@ -1025,14 +1359,30 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         )
+                      else if (widget.state.currentUser.role == UserRole.assistantCr)
+                        ElevatedButton.icon(
+                          onPressed: _showAsstCrSendDialog,
+                          icon: Icon(
+                            widget.state.isSectionVerifiedByAsstCr ? Icons.check_circle_outline : Icons.send_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            widget.state.isSectionVerifiedByAsstCr ? 'Update & Resend to CR' : 'Verify & Send to CR',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: widget.state.isSectionVerifiedByAsstCr ? const Color(0xFF0D9488) : AppColors.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        )
                       else
                         ElevatedButton.icon(
                           onPressed: _showVerificationDialog,
-                          icon: const Icon(Icons.checklist_rtl, size: 18),
-                          label: const Text('Verify & Submit'),
+                          icon: const Icon(Icons.lock_outline, size: 18),
+                          label: const Text('Final Lock & Dispatch'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),

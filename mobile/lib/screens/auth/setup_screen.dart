@@ -439,9 +439,7 @@ class _SetupScreenState extends State<SetupScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    _selectedStudent!.isFemale
-                                        ? 'Assigned: Female Assistant CR (Girls Section Coordinator)'
-                                        : 'Assigned: Male Assistant CR (Boys Section Coordinator)',
+                                    'Assigned: Assistant CR (Section Coordinator)',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,

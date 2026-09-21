@@ -18,7 +18,7 @@ class RoleSwitcherSheet extends StatelessWidget {
     );
   }
 
-  void _promptPasscodeAndSwitch(BuildContext context, UserRole role, {bool? isFemale}) {
+  void _promptPasscodeAndSwitch(BuildContext context, UserRole role) {
     // Student & Admin do not require secret CR passcodes
     if (role == UserRole.student || role == UserRole.admin) {
       state.switchRole(role);
@@ -30,7 +30,7 @@ class RoleSwitcherSheet extends StatelessWidget {
     if (role == UserRole.cr) {
       roleLabel = 'Class Representative (CR)';
     } else if (role == UserRole.assistantCr) {
-      roleLabel = isFemale == true ? 'Female Assistant CR (Girls Section)' : 'Male Assistant CR (Boys Section)';
+      roleLabel = 'Assistant CR (Asst. CR)';
     } else if (role == UserRole.advisor) {
       roleLabel = 'Class Advisor (Mrs. V. Nandhini, AP/CA)';
     } else if (role == UserRole.staff) {
@@ -100,18 +100,17 @@ class RoleSwitcherSheet extends StatelessWidget {
                 ),
                 onPressed: () async {
                   final entered = controller.text.trim().toUpperCase();
-                  final gender = isFemale != null ? (isFemale ? 'F' : 'M') : null;
                   final res = await state.verifyRolePasscode(
                     classId: 'I-MCA-A',
                     role: role,
                     code: entered,
-                    gender: gender,
                   );
 
                   if (res['valid'] == true) {
                     Navigator.pop(dialogCtx); // Close dialog
                     Navigator.pop(context);   // Close bottom sheet
-                    if (role == UserRole.assistantCr && isFemale != null) {
+                    if (role == UserRole.assistantCr) {
+                      final isFemale = res['gender'] == 'F' || entered == 'FACR2026' || (state.currentUser.gender == 'F' && entered != 'MACR2026');
                       state.switchAssistantCrRole(isFemale: isFemale);
                     } else {
                       state.switchRole(role);
@@ -134,8 +133,6 @@ class RoleSwitcherSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentRole = state.currentRole;
-    final isFemaleAsst = currentRole == UserRole.assistantCr && state.currentUser.gender == 'F';
-    final isMaleAsst = currentRole == UserRole.assistantCr && state.currentUser.gender != 'F';
 
     return Container(
       decoration: const BoxDecoration(
@@ -196,26 +193,15 @@ class RoleSwitcherSheet extends StatelessWidget {
               onTap: () => _promptPasscodeAndSwitch(context, UserRole.cr),
             ),
 
-            // 2a. Male Assistant CR
+            // 2. Assistant CR
             _buildCustomTile(
               context,
-              isSelected: isMaleAsst,
-              title: '2a. Male Assistant CR (Boys Section)',
-              subtitle: 'SHOVIN MICHEL DAVID • Cross-checks 28 Boys, marks & updates',
-              icon: Icons.male,
+              isSelected: currentRole == UserRole.assistantCr,
+              title: '2. Assistant CR (Asst. CR)',
+              subtitle: 'Cross-checks and verifies assigned section roster with CR',
+              icon: Icons.how_to_reg_outlined,
               color: const Color(0xFF0284C7),
-              onTap: () => _promptPasscodeAndSwitch(context, UserRole.assistantCr, isFemale: false),
-            ),
-
-            // 2b. Female Assistant CR
-            _buildCustomTile(
-              context,
-              isSelected: isFemaleAsst,
-              title: '2b. Female Assistant CR (Girls Section)',
-              subtitle: 'DHIVYALAKSHMI H • Cross-checks 24 Girls, marks & updates',
-              icon: Icons.female,
-              color: const Color(0xFFDB2777),
-              onTap: () => _promptPasscodeAndSwitch(context, UserRole.assistantCr, isFemale: true),
+              onTap: () => _promptPasscodeAndSwitch(context, UserRole.assistantCr),
             ),
 
             // 3. Advisor

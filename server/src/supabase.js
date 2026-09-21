@@ -71,7 +71,12 @@ function mapAttendance(row) {
     lastModifiedBy: row.last_modified_by !== undefined ? row.last_modified_by : (row.lastModifiedBy || ''),
     status: row.status || 'submitted',
     submittedAt: row.submitted_at !== undefined ? row.submitted_at : (row.submittedAt || new Date().toISOString()),
-    notes: row.notes || ''
+    notes: row.notes || '',
+    asstCrVerified: row.asst_cr_verified !== undefined ? Boolean(row.asst_cr_verified) : Boolean(row.asstCrVerified),
+    asstCrVerifiedBy: row.asst_cr_verified_by !== undefined ? row.asst_cr_verified_by : (row.asstCrVerifiedBy || ''),
+    asstCrVerifiedAt: row.asst_cr_verified_at !== undefined ? row.asst_cr_verified_at : (row.asstCrVerifiedAt || ''),
+    periodNo: row.period_no !== undefined ? row.period_no : (row.periodNo || 1),
+    periodSubject: row.period_subject !== undefined ? row.period_subject : (row.periodSubject || '')
   };
 }
 
@@ -334,7 +339,12 @@ const db = {
         last_modified_by: record.lastModifiedBy || '',
         status: record.status || 'submitted',
         submitted_at: record.submittedAt || new Date().toISOString(),
-        notes: record.notes || ''
+        notes: record.notes || '',
+        asst_cr_verified: record.asstCrVerified !== undefined ? Boolean(record.asstCrVerified) : false,
+        asst_cr_verified_by: record.asstCrVerifiedBy || '',
+        asst_cr_verified_at: record.asstCrVerifiedAt || '',
+        period_no: record.periodNo || 1,
+        period_subject: record.periodSubject || ''
       };
       let { error } = await supabase.from('attendance_records').upsert(dbRow, { onConflict: 'class_id,date' });
       if (error && error.message && error.message.includes('column')) {
