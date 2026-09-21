@@ -111,9 +111,17 @@ class RoleSwitcherSheet extends StatelessWidget {
                     Navigator.pop(context);   // Close bottom sheet
                     if (role == UserRole.assistantCr) {
                       final isFemale = res['gender'] == 'F' || entered == 'FACR2026' || (state.currentUser.gender == 'F' && entered != 'MACR2026');
-                      state.switchAssistantCrRole(isFemale: isFemale);
+                      state.switchAssistantCrRole(
+                        isFemale: isFemale,
+                        customName: res['name']?.toString(),
+                        customRoll: res['rollNo'] is int ? res['rollNo'] as int : int.tryParse(res['rollNo']?.toString() ?? ''),
+                      );
                     } else {
-                      state.switchRole(role);
+                      state.switchRole(
+                        role,
+                        customName: res['name']?.toString(),
+                        customSubject: res['subject']?.toString(),
+                      );
                     }
                   } else {
                     setDialogState(() {

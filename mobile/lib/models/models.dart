@@ -310,6 +310,7 @@ class ClassDelegation {
   int? get asstRoll => femaleAsstRoll ?? maleAsstRoll;
   String? get asstName => femaleAsstName ?? maleAsstName;
   String? get asstCode => femaleAsstCode ?? maleAsstCode;
+  String? get asstGender => femaleAsstRoll != null ? 'F' : (maleAsstRoll != null ? 'M' : null);
 
   factory ClassDelegation.fromJson(Map<String, dynamic> json) {
     return ClassDelegation(
