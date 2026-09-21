@@ -792,6 +792,100 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: Column(
                   children: [
+                    // Period Selector Horizontal Carousel
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.access_time_filled, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Period ${widget.state.viewingPeriodNo}: ${widget.state.activePeriodSubject ?? "Subject"}',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.deepBlue),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                widget.state.isAttendanceLocked ? '🔒 Time Locked / Submitted' : '🟢 Editable (Active Slot)',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.state.isAttendanceLocked ? AppColors.absentRed : AppColors.presentGreen,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: List.generate(kMcaPeriodTimings.length, (idx) {
+                                final pNum = idx + 1;
+                                final isSelected = widget.state.viewingPeriodNo == pNum;
+                                final isLocked = widget.state.isPeriodLocked(pNum);
+                                final subj = getPeriodSubject(pNum);
+                                final hasRecord = widget.state.periodRecords.containsKey(pNum);
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    widget.state.switchToPeriod(pNum);
+                                    setState(() {});
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : (isLocked ? const Color(0xFFF1F5F9) : Colors.white),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : (hasRecord ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0)),
+                                        width: isSelected ? 1.5 : 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (isLocked)
+                                          const Padding(
+                                            padding: EdgeInsets.only(right: 4),
+                                            child: Icon(Icons.lock, size: 11, color: Color(0xFF94A3B8)),
+                                          )
+                                        else if (hasRecord)
+                                          const Padding(
+                                            padding: EdgeInsets.only(right: 4),
+                                            child: Icon(Icons.check_circle, size: 11, color: AppColors.presentGreen),
+                                          ),
+                                        Text(
+                                          'P$pNum: $subj',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : (isLocked ? const Color(0xFF64748B) : AppColors.deepBlue),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     // Locked Banner or Advisor Override Banner
                     if (widget.state.isAttendanceLocked) ...[
                       Container(

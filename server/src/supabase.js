@@ -197,15 +197,20 @@ const db = {
   },
 
   // Fetch attendance by specific date
-  async getAttendanceByDate(classId = 'I-MCA-A', date) {
-    const memRecord = memoryStore.attendanceRecords.find(r => r.classId === classId && r.date === date) || null;
+  async getAttendanceByDate(classId = 'I-MCA-A', date, periodNo) {
+    const memRecord = memoryStore.attendanceRecords.find(r => 
+      r.classId === classId && r.date === date && (!periodNo || r.periodNo == periodNo)
+    ) || null;
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('attendance_records')
         .select('*')
         .eq('class_id', classId)
-        .eq('date', date)
-        .maybeSingle();
+        .eq('date', date);
+      if (periodNo) {
+        query = query.eq('period_no', periodNo);
+      }
+      const { data, error } = await query.order('submitted_at', { ascending: false }).limit(1).maybeSingle();
 
       if (!error && data) {
         const mapped = mapAttendance(data);
@@ -223,7 +228,9 @@ const db = {
   // Save or update attendance record
   async saveAttendanceRecord(record) {
     // 1. Update memory store
-    const existingIdx = memoryStore.attendanceRecords.findIndex(r => r.date === record.date && r.classId === record.classId);
+    const existingIdx = memoryStore.attendanceRecords.findIndex(r => 
+      r.date === record.date && r.classId === record.classId && (r.periodNo == record.periodNo || r.id === record.id)
+    );
     if (existingIdx >= 0) {
       memoryStore.attendanceRecords[existingIdx] = record;
     } else {
@@ -254,7 +261,7 @@ const db = {
         period_no: record.periodNo || 1,
         period_subject: record.periodSubject || ''
       };
-      let { error } = await supabase.from('attendance_records').upsert(dbRow, { onConflict: 'class_id,date' });
+      let { error } = await supabase.from('attendance_records').upsert(dbRow, { onConflict: 'id' });
       if (error && error.message && error.message.includes('column')) {
         // Fallback for older database schema without added audit columns
         const coreRow = {
@@ -270,7 +277,7 @@ const db = {
           submitted_at: record.submittedAt || new Date().toISOString(),
           notes: record.notes || ''
         };
-        const res = await supabase.from('attendance_records').upsert(coreRow, { onConflict: 'class_id,date' });
+        const res = await supabase.from('attendance_records').upsert(coreRow, { onConflict: 'id' });
         error = res.error;
       }
       if (error) {

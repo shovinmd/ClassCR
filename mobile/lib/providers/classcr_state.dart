@@ -59,29 +59,95 @@ class ClassCRState extends ChangeNotifier {
   String get todayDate => _todayDate;
   String get formattedTodayDate => _formatDateForReport(_todayDate);
 
-  // Active attendance record for current date
-  AttendanceRecord? _currentAttendanceRecord;
-  AttendanceRecord? get currentAttendanceRecord => _currentAttendanceRecord;
+  // Per-period attendance records for today — key = periodNo (1–8)
+  Map<int, AttendanceRecord> _periodRecords = {};
+  Map<int, AttendanceRecord> get periodRecords => _periodRecords;
 
-  // Locked attendance check: once finalized and locked by CR
-  bool get isAttendanceLocked =>
-      _currentAttendanceRecord != null && _currentAttendanceRecord!.isLocked;
+  // Which period the CR/Asst CR is currently viewing/marking
+  int _viewingPeriodNo = getActivePeriodNo() ?? 1;
+  int get viewingPeriodNo => _viewingPeriodNo;
 
-  // Assistant CR Verification Status
-  bool get isSectionVerifiedByAsstCr => _currentAttendanceRecord?.asstCrVerified == true;
-  String? get asstCrVerifiedBy => _currentAttendanceRecord?.asstCrVerifiedBy;
-  String? get asstCrVerifiedAt => _currentAttendanceRecord?.asstCrVerifiedAt;
-  int? get activePeriodNo => _currentAttendanceRecord?.periodNo;
-  String? get activePeriodSubject => _currentAttendanceRecord?.periodSubject;
+  // Internal storage for the current attendance record
+  AttendanceRecord? _rawCurrentAttendanceRecord;
+  AttendanceRecord? get _currentAttendanceRecord => _rawCurrentAttendanceRecord;
+  set _currentAttendanceRecord(AttendanceRecord? record) {
+    _rawCurrentAttendanceRecord = record;
+    if (record != null) {
+      final pNo = record.periodNo ?? _viewingPeriodNo;
+      _periodRecords[pNo] = record;
+    }
+  }
+  AttendanceRecord? get currentAttendanceRecord => _rawCurrentAttendanceRecord;
+
+  /// Switch the viewed/active period and load its attendance state
+  void switchToPeriod(int periodNo) {
+    if (_viewingPeriodNo == periodNo) return;
+    // Cache draft for current period if not yet locked
+    if (!isAttendanceLocked && _rawCurrentAttendanceRecord == null) {
+      _periodRecords[_viewingPeriodNo] = AttendanceRecord(
+        id: 'att_${_todayDate.replaceAll('-', '')}_P$_viewingPeriodNo',
+        classId: _currentUser.classId ?? 'I-MCA-A',
+        date: _todayDate,
+        totalStudents: totalCount,
+        presentCount: presentCount,
+        absentCount: absentCount,
+        absentRolls: _absentRolls.toList()..sort(),
+        markedByName: _currentUser.name,
+        markedByRole: _currentUser.roleDisplayName,
+        isLocked: false,
+        status: 'draft',
+        isSynced: false,
+        notes: _crNotes,
+        periodNo: _viewingPeriodNo,
+        periodSubject: getPeriodSubject(_viewingPeriodNo),
+      );
+    }
+    _viewingPeriodNo = periodNo;
+    final rec = _periodRecords[periodNo];
+    _rawCurrentAttendanceRecord = rec;
+    _absentRolls.clear();
+    if (rec != null) {
+      _absentRolls.addAll(rec.absentRolls);
+      if (rec.notes != null) _crNotes = rec.notes!;
+    } else {
+      _crNotes = 'Daily attendance session verified and submitted to advisor.';
+    }
+    notifyListeners();
+  }
+
+  // Time-based lock: period is locked if its end time has passed OR record.isLocked
+  bool get isAttendanceLocked {
+    final rec = _rawCurrentAttendanceRecord;
+    if (rec != null && rec.isLocked) return true;
+    return isPeriodTimeLocked(_viewingPeriodNo);
+  }
+
+  // Check if a specific period is locked
+  bool isPeriodLocked(int periodNo) {
+    final rec = _periodRecords[periodNo];
+    if (rec != null && rec.isLocked) return true;
+    return isPeriodTimeLocked(periodNo);
+  }
+
+  // Assistant CR Verification Status (for viewed period)
+  bool get isSectionVerifiedByAsstCr => _rawCurrentAttendanceRecord?.asstCrVerified == true;
+  String? get asstCrVerifiedBy => _rawCurrentAttendanceRecord?.asstCrVerifiedBy;
+  String? get asstCrVerifiedAt => _rawCurrentAttendanceRecord?.asstCrVerifiedAt;
+  int? get activePeriodNo => _viewingPeriodNo;
+  String? get activePeriodSubject => getPeriodSubject(_viewingPeriodNo);
 
   // Only CR & Asst. CR can mark attendance while unlocked; only Class Advisor can modify/override after submission. HOD and Students CANNOT mark or modify attendance.
   bool get canModifyAttendance =>
       (!isAttendanceLocked && (_currentUser.role == UserRole.cr || _currentUser.role == UserRole.assistantCr)) ||
       _currentUser.role == UserRole.advisor;
 
-  // Set of absent roll numbers
+  // Set of absent roll numbers (for the currently viewed period)
   final Set<int> _absentRolls = {};
   Set<int> get absentRolls => _absentRolls;
+
+  // Absent rolls for a specific period
+  Set<int> absentRollsForPeriod(int periodNo) =>
+      _periodRecords[periodNo]?.absentRolls.toSet() ?? {};
 
   int get totalCount => _students.length; // 52
   int get absentCount => _absentRolls.length;
@@ -187,7 +253,11 @@ class ClassCRState extends ChangeNotifier {
       if (remoteHistory != null && remoteHistory.isNotEmpty) {
         _history = remoteHistory;
       }
-      final remoteToday = await ApiService.fetchTodayAttendance(classId: 'I-MCA-A', date: _todayDate);
+      final allPeriods = await ApiService.fetchAllPeriodsAttendance(classId: 'I-MCA-A', date: _todayDate);
+      if (allPeriods.isNotEmpty) {
+        _periodRecords = allPeriods;
+      }
+      final remoteToday = allPeriods[_viewingPeriodNo] ?? await ApiService.fetchTodayAttendance(classId: 'I-MCA-A', date: _todayDate, periodNo: _viewingPeriodNo);
       if (remoteToday != null) {
         _currentAttendanceRecord = remoteToday;
         _absentRolls.clear();
@@ -228,8 +298,8 @@ class ClassCRState extends ChangeNotifier {
   }
 
   Future<void> _loadAttendanceForDate(String date) async {
-    // 1. Check in local history
-    final existing = _history.where((r) => r.date == date).toList();
+    // 1. Check in local history for this date and period
+    final existing = _history.where((r) => r.date == date && (r.periodNo == _viewingPeriodNo || r.id == 'att_${date.replaceAll('-', '')}_P$_viewingPeriodNo')).toList();
     if (existing.isNotEmpty) {
       _currentAttendanceRecord = existing.first;
       _absentRolls.clear();
@@ -240,7 +310,11 @@ class ClassCRState extends ChangeNotifier {
 
     // 2. Check remote backend if online
     if (_isOnline) {
-      final remote = await ApiService.fetchTodayAttendance(classId: _currentUser.classId ?? 'I-MCA-A', date: date);
+      final allPeriods = await ApiService.fetchAllPeriodsAttendance(classId: _currentUser.classId ?? 'I-MCA-A', date: date);
+      if (allPeriods.isNotEmpty) {
+        _periodRecords = allPeriods;
+      }
+      final remote = allPeriods[_viewingPeriodNo] ?? await ApiService.fetchTodayAttendance(classId: _currentUser.classId ?? 'I-MCA-A', date: date, periodNo: _viewingPeriodNo);
       if (remote != null) {
         _currentAttendanceRecord = remote;
         _absentRolls.clear();
@@ -878,9 +952,17 @@ class ClassCRState extends ChangeNotifier {
   Future<void> fetchRealtimeAttendance() async {
     if (!_isOnline) return;
     try {
-      final remote = await ApiService.fetchTodayAttendance(
+      final allPeriods = await ApiService.fetchAllPeriodsAttendance(
         classId: _currentUser.classId ?? 'I-MCA-A',
         date: _todayDate,
+      );
+      if (allPeriods.isNotEmpty) {
+        _periodRecords = allPeriods;
+      }
+      final remote = allPeriods[_viewingPeriodNo] ?? await ApiService.fetchTodayAttendance(
+        classId: _currentUser.classId ?? 'I-MCA-A',
+        date: _todayDate,
+        periodNo: _viewingPeriodNo,
       );
       if (remote != null) {
         final remoteSet = remote.absentRolls.toSet();
@@ -994,6 +1076,8 @@ class ClassCRState extends ChangeNotifier {
           asstCrVerified: isSectionVerifiedByAsstCr,
           asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
           asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
+          periodNo: _viewingPeriodNo,
+          periodSubject: getPeriodSubject(_viewingPeriodNo),
         );
       } catch (_) {
         // Push to offline queue if the live call fails
@@ -1010,7 +1094,7 @@ class ClassCRState extends ChangeNotifier {
 
   Future<void> _queueCurrentDraft() async {
     final draft = AttendanceRecord(
-      id: 'att_${_todayDate.replaceAll('-', '')}',
+      id: 'att_${_todayDate.replaceAll('-', '')}_P$_viewingPeriodNo',
       classId: _currentUser.classId ?? 'I-MCA-A',
       date: _todayDate,
       totalStudents: totalCount,
@@ -1023,6 +1107,8 @@ class ClassCRState extends ChangeNotifier {
       status: 'draft',
       isSynced: false,
       notes: _crNotes,
+      periodNo: _viewingPeriodNo,
+      periodSubject: getPeriodSubject(_viewingPeriodNo),
     );
     await _queueRecord(draft);
   }
@@ -1032,7 +1118,7 @@ class ClassCRState extends ChangeNotifier {
     final now = DateTime.now();
     final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
     final updatedRecord = (_currentAttendanceRecord ?? AttendanceRecord(
-      id: 'att_${_todayDate.replaceAll('-', '')}',
+      id: 'att_${_todayDate.replaceAll('-', '')}_P$_viewingPeriodNo',
       classId: _currentUser.classId ?? 'I-MCA-A',
       date: _todayDate,
       totalStudents: totalCount,
@@ -1040,6 +1126,8 @@ class ClassCRState extends ChangeNotifier {
       absentCount: absentCount,
       absentRolls: _absentRolls.toList()..sort(),
       isLocked: false,
+      periodNo: _viewingPeriodNo,
+      periodSubject: getPeriodSubject(_viewingPeriodNo),
     )).copyWith(
       asstCrVerified: true,
       asstCrVerifiedBy: _currentUser.name,
@@ -1049,9 +1137,12 @@ class ClassCRState extends ChangeNotifier {
       notes: notes ?? _crNotes,
       markedByName: _currentUser.name,
       markedByRole: _currentUser.roleDisplayName,
+      periodNo: _viewingPeriodNo,
+      periodSubject: getPeriodSubject(_viewingPeriodNo),
     );
 
     _currentAttendanceRecord = updatedRecord;
+    _periodRecords[_viewingPeriodNo] = updatedRecord;
     notifyListeners();
 
     if (_isOnline) {
@@ -1068,6 +1159,8 @@ class ClassCRState extends ChangeNotifier {
         asstCrVerified: true,
         asstCrVerifiedBy: _currentUser.name,
         asstCrVerifiedAt: timeStr,
+        periodNo: _viewingPeriodNo,
+        periodSubject: getPeriodSubject(_viewingPeriodNo),
       );
     }
     return true;
@@ -1133,9 +1226,11 @@ class ClassCRState extends ChangeNotifier {
     _crNotes = notes ?? _crNotes;
     final authorName = _currentUser.name;
     final authorRole = _currentUser.roleDisplayName;
+    final pNo = periodNo ?? _currentAttendanceRecord?.periodNo ?? _viewingPeriodNo;
+    final pSubject = periodSubject ?? _currentAttendanceRecord?.periodSubject ?? getPeriodSubject(pNo);
 
     final record = AttendanceRecord(
-      id: 'att_${_todayDate.replaceAll('-', '')}',
+      id: 'att_${_todayDate.replaceAll('-', '')}_P$pNo',
       classId: _currentUser.classId ?? 'I-MCA-A',
       date: _todayDate,
       totalStudents: totalCount,
@@ -1153,14 +1248,15 @@ class ClassCRState extends ChangeNotifier {
       asstCrVerified: _currentAttendanceRecord?.asstCrVerified ?? false,
       asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
       asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
-      periodNo: periodNo ?? _currentAttendanceRecord?.periodNo ?? 1,
-      periodSubject: periodSubject ?? _currentAttendanceRecord?.periodSubject,
+      periodNo: pNo,
+      periodSubject: pSubject,
     );
 
     _currentAttendanceRecord = record;
+    _periodRecords[pNo] = record;
 
-    // Update in local history
-    final existingIndex = _history.indexWhere((r) => r.date == _todayDate);
+    // Update in local history (keyed by date AND periodNo / id)
+    final existingIndex = _history.indexWhere((r) => r.date == _todayDate && (r.periodNo == pNo || r.id == record.id));
     if (existingIndex >= 0) {
       _history[existingIndex] = record;
     } else {
@@ -1197,12 +1293,14 @@ class ClassCRState extends ChangeNotifier {
   }
 
   // Advisor modifies and approves attendance after submission
-  Future<bool> saveAdvisorAttendanceOverride({String? notes}) async {
+  Future<bool> saveAdvisorAttendanceOverride({String? notes, int? periodNo}) async {
     _crNotes = notes ?? _crNotes;
     final advisorName = _delegation.advisorName;
+    final pNo = periodNo ?? _currentAttendanceRecord?.periodNo ?? _viewingPeriodNo;
+    final pSubject = _currentAttendanceRecord?.periodSubject ?? getPeriodSubject(pNo);
 
     final record = AttendanceRecord(
-      id: 'att_${_todayDate.replaceAll('-', '')}',
+      id: 'att_${_todayDate.replaceAll('-', '')}_P$pNo',
       classId: _currentUser.classId ?? 'I-MCA-A',
       date: _todayDate,
       totalStudents: totalCount,
@@ -1217,11 +1315,17 @@ class ClassCRState extends ChangeNotifier {
       submittedAt: _currentAttendanceRecord?.submittedAt ?? _nowTimeStr(),
       notes: _crNotes,
       isSynced: _isOnline,
+      asstCrVerified: _currentAttendanceRecord?.asstCrVerified ?? false,
+      asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
+      asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
+      periodNo: pNo,
+      periodSubject: pSubject,
     );
 
     _currentAttendanceRecord = record;
+    _periodRecords[pNo] = record;
 
-    final existingIndex = _history.indexWhere((r) => r.date == _todayDate);
+    final existingIndex = _history.indexWhere((r) => r.date == _todayDate && (r.periodNo == pNo || r.id == record.id));
     if (existingIndex >= 0) {
       _history[existingIndex] = record;
     } else {
@@ -1240,6 +1344,11 @@ class ClassCRState extends ChangeNotifier {
         markedByRole: record.markedByRole,
         isLocked: true,
         lastModifiedBy: advisorName,
+        asstCrVerified: record.asstCrVerified,
+        asstCrVerifiedBy: record.asstCrVerifiedBy,
+        asstCrVerifiedAt: record.asstCrVerifiedAt,
+        periodNo: record.periodNo,
+        periodSubject: record.periodSubject,
       );
       if (!success) {
         await _queueRecord(record);
@@ -1259,15 +1368,20 @@ class ClassCRState extends ChangeNotifier {
   }) async {
     final now = DateTime.now();
     final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-    if (_currentAttendanceRecord != null) {
-      _currentAttendanceRecord = _currentAttendanceRecord!.copyWith(
+    final targetRec = _periodRecords[periodNo] ?? (_viewingPeriodNo == periodNo ? _currentAttendanceRecord : null);
+    if (targetRec != null) {
+      final updated = targetRec.copyWith(
         facultyAcknowledgmentStatus: 'acknowledged',
         facultyAcknowledgedBy: facultyName,
         facultyAcknowledgedAt: timeStr,
         facultyRejectionReason: null,
       );
-      final idx = _history.indexWhere((r) => r.date == _todayDate);
-      if (idx >= 0) _history[idx] = _currentAttendanceRecord!;
+      _periodRecords[periodNo] = updated;
+      if (_viewingPeriodNo == periodNo) {
+        _currentAttendanceRecord = updated;
+      }
+      final idx = _history.indexWhere((r) => r.date == _todayDate && (r.periodNo == periodNo || r.id == updated.id));
+      if (idx >= 0) _history[idx] = updated;
       notifyListeners();
     }
   }
@@ -1280,23 +1394,28 @@ class ClassCRState extends ChangeNotifier {
   }) async {
     final now = DateTime.now();
     final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-    if (_currentAttendanceRecord != null) {
-      _currentAttendanceRecord = _currentAttendanceRecord!.copyWith(
+    final targetRec = _periodRecords[periodNo] ?? (_viewingPeriodNo == periodNo ? _currentAttendanceRecord : null);
+    if (targetRec != null) {
+      final updated = targetRec.copyWith(
         facultyAcknowledgmentStatus: 'rejected',
         facultyAcknowledgedBy: facultyName,
         facultyAcknowledgedAt: timeStr,
         facultyRejectionReason: reason,
         isLocked: false, // Allow CR / Asst CR to correct discrepancy and re-submit
       );
-      final idx = _history.indexWhere((r) => r.date == _todayDate);
-      if (idx >= 0) _history[idx] = _currentAttendanceRecord!;
+      _periodRecords[periodNo] = updated;
+      if (_viewingPeriodNo == periodNo) {
+        _currentAttendanceRecord = updated;
+      }
+      final idx = _history.indexWhere((r) => r.date == _todayDate && (r.periodNo == periodNo || r.id == updated.id));
+      if (idx >= 0) _history[idx] = updated;
       notifyListeners();
     }
   }
 
   Future<void> _queueRecord(AttendanceRecord record) async {
     final queue = await ApiService.loadOfflineQueue();
-    queue.removeWhere((r) => r.date == record.date);
+    queue.removeWhere((r) => r.date == record.date && (r.periodNo == record.periodNo || r.id == record.id));
     queue.add(record.copyWith(isSynced: false));
     await ApiService.saveOfflineQueue(queue);
     _pendingSyncCount = queue.length;

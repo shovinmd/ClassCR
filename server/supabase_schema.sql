@@ -22,6 +22,9 @@ ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowled
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowledged_by TEXT;
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowledged_at TEXT;
 ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_rejection_reason TEXT;
+-- Allow multiple period records per day by dropping stale class_id,date constraint
+ALTER TABLE public.attendance_records DROP CONSTRAINT IF EXISTS attendance_records_class_id_date_key;
+CREATE UNIQUE INDEX IF NOT EXISTS attendance_records_class_date_period_idx ON public.attendance_records(class_id, date, (COALESCE(period_no, 1)));
 
 -- 1. Create Tables
 

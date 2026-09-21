@@ -197,3 +197,56 @@ Map<String, dynamic> getFirstPeriodDetailsForDate([DateTime? date]) {
     'advisorName': 'Mrs. V. Nandhini, AP/CA',
   };
 }
+
+/// Parses a time string like "9:40 AM" or "2:00 PM" into a [DateTime] for today.
+DateTime _parseTimeToday(String timeStr) {
+  final now = DateTime.now();
+  final clean = timeStr.trim().toUpperCase();
+  final isPm = clean.endsWith('PM');
+  final parts = clean.replaceAll(RegExp(r'[AMP ]'), '').split(':');
+  int hour = int.parse(parts[0]);
+  final int minute = parts.length > 1 ? int.parse(parts[1]) : 0;
+  if (isPm && hour != 12) hour += 12;
+  if (!isPm && hour == 12) hour = 0;
+  return DateTime(now.year, now.month, now.day, hour, minute);
+}
+
+/// Returns true if [periodNo]'s end time has already passed (auto time-lock).
+bool isPeriodTimeLocked(int periodNo) {
+  final idx = periodNo - 1;
+  if (idx < 0 || idx >= kMcaPeriodTimings.length) return false;
+  final endTime = _parseTimeToday(kMcaPeriodTimings[idx].endTime);
+  return DateTime.now().isAfter(endTime);
+}
+
+/// Returns the currently active period number based on wall-clock time.
+/// Returns null if before the first period or after the last period of the day.
+int? getActivePeriodNo() {
+  final now = DateTime.now();
+  for (final p in kMcaPeriodTimings) {
+    final start = _parseTimeToday(p.startTime);
+    final end = _parseTimeToday(p.endTime);
+    if (now.isAfter(start.subtract(const Duration(minutes: 5))) && now.isBefore(end)) {
+      return p.periodNo;
+    }
+  }
+  // After all periods: return last period
+  final lastEnd = _parseTimeToday(kMcaPeriodTimings.last.endTime);
+  if (now.isAfter(lastEnd)) return kMcaPeriodTimings.last.periodNo;
+  // Before first period: return 1
+  return 1;
+}
+
+/// Gets the subject abbreviation for [periodNo] on [date] (defaults to today).
+String getPeriodSubject(int periodNo, [DateTime? date]) {
+  final d = date ?? DateTime.now();
+  final dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  final dayName = dayNames[d.weekday - 1];
+  final slot = kMcaTimeTable.firstWhere(
+    (s) => s.day.toLowerCase() == dayName.toLowerCase(),
+    orElse: () => kMcaTimeTable.first,
+  );
+  final idx = periodNo - 1;
+  if (idx >= 0 && idx < slot.periods.length) return slot.periods[idx];
+  return '';
+}

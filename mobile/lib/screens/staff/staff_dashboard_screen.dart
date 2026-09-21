@@ -211,38 +211,42 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                       'Switch Faculty Profile:',
                       style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<FacultyMember>(
-                          dropdownColor: const Color(0xFF0369A1),
-                          iconEnabledColor: Colors.white,
-                          value: _selectedFaculty,
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                          items: kOfficialMcaFaculty.map((f) {
-                            return DropdownMenuItem<FacultyMember>(
-                              value: f,
-                              child: Text(
-                                '${f.name.split(',')[0]} (${f.subjectAbb ?? f.role})',
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() {
-                                _selectedFaculty = val;
-                                _isAcknowledged = false;
-                              });
-                            }
-                          },
+                    Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<FacultyMember>(
+                            dropdownColor: const Color(0xFF0369A1),
+                            iconEnabledColor: Colors.white,
+                            value: _selectedFaculty,
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            items: kOfficialMcaFaculty.map((f) {
+                              return DropdownMenuItem<FacultyMember>(
+                                value: f,
+                                child: Text(
+                                  '${f.name.split(',')[0]} (${f.subjectAbb ?? f.role})',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selectedFaculty = val;
+                                  _isAcknowledged = false;
+                                });
+                              }
+                            },
+                          ),
                         ),
                       ),
                     ),
+
                   ],
                 ),
               ],

@@ -178,7 +178,8 @@ app.get('/api/classes/:id', async (req, res) => {
 app.get('/api/attendance/today', async (req, res) => {
   const classId = req.query.classId || 'I-MCA-A';
   const today = req.query.date || new Date().toISOString().slice(0, 10);
-  let record = await db.getAttendanceByDate(classId, today);
+  const periodNo = req.query.periodNo ? parseInt(req.query.periodNo, 10) : null;
+  let record = await db.getAttendanceByDate(classId, today, periodNo);
   if (!record && req.query.date === undefined) {
     const history = await db.getAttendanceHistory(classId);
     record = history[0] || null;
@@ -188,7 +189,8 @@ app.get('/api/attendance/today', async (req, res) => {
 
 app.get('/api/attendance/date/:date', async (req, res) => {
   const classId = req.query.classId || 'I-MCA-A';
-  const record = await db.getAttendanceByDate(classId, req.params.date);
+  const periodNo = req.query.periodNo ? parseInt(req.query.periodNo, 10) : null;
+  const record = await db.getAttendanceByDate(classId, req.params.date, periodNo);
   if (!record) {
     return res.json({ attendance: null, message: 'No attendance marked for this date' });
   }
@@ -206,20 +208,22 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
   const { classId, date, absentRolls, notes, markedByName, markedByRole } = req.body;
   const targetClass = classId || req.user.classId || 'I-MCA-A';
   const recordDate = date || new Date().toISOString().slice(0, 10);
+  const periodNo = req.body.periodNo ? parseInt(req.body.periodNo, 10) : 1;
+  const periodSubject = req.body.periodSubject || '';
 
   // Backend RBAC enforcement: CR can only submit for assigned class
   if (req.user.role === 'cr' && req.user.classId && req.user.classId !== targetClass) {
     return res.status(403).json({ error: 'Forbidden: CR cannot mark attendance for other classes' });
   }
 
-  // Check if attendance already exists and is locked
-  const existing = await db.getAttendanceByDate(targetClass, recordDate);
+  // Check if attendance already exists for THIS period and is locked
+  const existing = await db.getAttendanceByDate(targetClass, recordDate, periodNo);
   const isAdvisorOrAdmin = req.user.role === 'advisor' || req.user.role === 'admin';
 
   if (existing && existing.isLocked) {
     if (!isAdvisorOrAdmin) {
       return res.status(403).json({
-        error: 'Attendance is locked after final submission. Only Class Advisor can modify attendance.',
+        error: `Period ${periodNo} attendance is locked after submission. Only Class Advisor can modify attendance.`,
         isLocked: true,
         markedByName: existing.markedByName,
         markedByRole: existing.markedByRole
@@ -237,7 +241,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
   const isLocked = req.body.isLocked !== undefined ? Boolean(req.body.isLocked) : (req.user.role === 'cr' && req.body.status !== 'draft');
 
   const newRecord = {
-    id: `att_${recordDate.replace(/-/g, '')}`,
+    id: `att_${recordDate.replace(/-/g, '')}_P${periodNo}`,
     classId: targetClass,
     date: recordDate,
     totalStudents: total,
@@ -255,8 +259,8 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     asstCrVerified: req.body.asstCrVerified !== undefined ? Boolean(req.body.asstCrVerified) : (existing ? existing.asstCrVerified : false),
     asstCrVerifiedBy: req.body.asstCrVerifiedBy || (existing ? existing.asstCrVerifiedBy : ''),
     asstCrVerifiedAt: req.body.asstCrVerifiedAt || (existing ? existing.asstCrVerifiedAt : ''),
-    periodNo: req.body.periodNo || (existing ? existing.periodNo : 1),
-    periodSubject: req.body.periodSubject || (existing ? existing.periodSubject : '')
+    periodNo: periodNo,
+    periodSubject: periodSubject || (existing ? existing.periodSubject : '')
   };
 
   await db.saveAttendanceRecord(newRecord);

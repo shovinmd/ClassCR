@@ -73,11 +73,16 @@ class ApiService {
     return null;
   }
 
-  static Future<AttendanceRecord?> fetchTodayAttendance({String classId = 'I-MCA-A', String? date}) async {
+  static Future<AttendanceRecord?> fetchTodayAttendance({
+    String classId = 'I-MCA-A',
+    String? date,
+    int? periodNo,
+  }) async {
     try {
-      final url = date != null
+      var url = date != null
           ? '$_activeBaseUrl/attendance/today?classId=$classId&date=$date'
           : '$_activeBaseUrl/attendance/today?classId=$classId';
+      if (periodNo != null) url += '&periodNo=$periodNo';
       final response = await http
           .get(Uri.parse(url))
           .timeout(const Duration(seconds: 3));
@@ -89,6 +94,33 @@ class ApiService {
       }
     } catch (_) {}
     return null;
+  }
+
+  /// Fetch all period records for a given date (returns map of periodNo → record).
+  static Future<Map<int, AttendanceRecord>> fetchAllPeriodsAttendance({
+    String classId = 'I-MCA-A',
+    required String date,
+  }) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_activeBaseUrl/attendance/history?classId=$classId&date=$date'))
+          .timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final list = (data['history'] as List? ?? data['records'] as List? ?? [])
+            .map((r) => AttendanceRecord.fromJson(r as Map<String, dynamic>))
+            .where((r) => r.date == date)
+            .toList();
+        final map = <int, AttendanceRecord>{};
+        for (final rec in list) {
+          if (rec.periodNo != null) {
+            map[rec.periodNo!] = rec;
+          }
+        }
+        return map;
+      }
+    } catch (_) {}
+    return {};
   }
 
   static Future<bool> submitAttendance({
