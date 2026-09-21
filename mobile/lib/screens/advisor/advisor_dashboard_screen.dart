@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../models/models.dart';
 import '../../data/mca_faculty.dart';
 import '../../providers/classcr_state.dart';
 import '../cr/report_screen.dart';
@@ -513,119 +514,289 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // 1. CLASS REPRESENTATIVE (CR)
-                    const Text('Class Representative (CR):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.cardBorder),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _selectedCrRoll,
-                          isExpanded: true,
-                          items: widget.state.students.map((s) {
-                            return DropdownMenuItem<int>(
-                              value: s.rollNo,
-                              child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
-                            );
-                          }).toList(),
-                          onChanged: (val) => setState(() => _selectedCrRoll = val),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _crCodeCtrl,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        labelText: 'CR Join Passcode',
-                        hintText: 'e.g. CR2026',
-                        prefixIcon: Icon(Icons.key, size: 18),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
+                    // Extract currently selected representatives
+                    Builder(
+                      builder: (context) {
+                        final selectedCrStudent = widget.state.students.cast<Student?>().firstWhere(
+                          (s) => s?.rollNo == _selectedCrRoll,
+                          orElse: () => null,
+                        );
+                        final selectedMaleAsstStudent = widget.state.students.cast<Student?>().firstWhere(
+                          (s) => s?.rollNo == _selectedMaleAsstRoll,
+                          orElse: () => null,
+                        );
+                        final selectedFemaleAsstStudent = widget.state.students.cast<Student?>().firstWhere(
+                          (s) => s?.rollNo == _selectedFemaleAsstRoll,
+                          orElse: () => null,
+                        );
 
-                    const Divider(height: 28),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 1. CLASS REPRESENTATIVE (CR)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('1. Class Representative (CR):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                if (selectedCrStudent != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      selectedCrStudent.name,
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.cardBorder),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value: _selectedCrRoll,
+                                  isExpanded: true,
+                                  items: widget.state.students.map((s) {
+                                    return DropdownMenuItem<int>(
+                                      value: s.rollNo,
+                                      child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) => setState(() => _selectedCrRoll = val),
+                                ),
+                              ),
+                            ),
+                            if (selectedCrStudent != null) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.badge, color: AppColors.primary, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Appointed CR: ${selectedCrStudent.name}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.deepBlue),
+                                          ),
+                                          Text(
+                                            'Roll #${selectedCrStudent.rollNo} • Enrollment: ${selectedCrStudent.enrollmentNo} • Code: ${selectedCrStudent.code}',
+                                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _crCodeCtrl,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: const InputDecoration(
+                                labelText: 'CR Join Passcode',
+                                hintText: 'e.g. CR2026',
+                                prefixIcon: Icon(Icons.key, size: 18),
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
 
-                    // 2. ASSISTANT CR 1
-                    const Text('Assistant CR (Section Coordinator 1):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0369A1))),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0F9FF),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFBAE6FD)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _selectedMaleAsstRoll,
-                          isExpanded: true,
-                          items: widget.state.students.where((s) => s.isMale).map((s) {
-                            return DropdownMenuItem<int>(
-                              value: s.rollNo,
-                              child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
-                            );
-                          }).toList(),
-                          onChanged: (val) => setState(() => _selectedMaleAsstRoll = val),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _maleAsstCodeCtrl,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        labelText: 'Asst. CR Passcode',
-                        hintText: 'e.g. ACR2026',
-                        prefixIcon: Icon(Icons.how_to_reg, color: Color(0xFF0284C7), size: 18),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
+                            const Divider(height: 28),
 
-                    const Divider(height: 28),
+                            // 2. ASSISTANT CR 1
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('2. Assistant CR (Section Coordinator 1):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0369A1))),
+                                if (selectedMaleAsstStudent != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0284C7).withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      selectedMaleAsstStudent.name,
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F9FF),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFBAE6FD)),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value: _selectedMaleAsstRoll,
+                                  isExpanded: true,
+                                  items: widget.state.students.where((s) => s.isMale).map((s) {
+                                    return DropdownMenuItem<int>(
+                                      value: s.rollNo,
+                                      child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) => setState(() => _selectedMaleAsstRoll = val),
+                                ),
+                              ),
+                            ),
+                            if (selectedMaleAsstStudent != null) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0F9FF),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFBAE6FD)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.assignment_ind, color: Color(0xFF0284C7), size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Appointed Asst. CR: ${selectedMaleAsstStudent.name}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0C4A6E)),
+                                          ),
+                                          Text(
+                                            'Roll #${selectedMaleAsstStudent.rollNo} • Enrollment: ${selectedMaleAsstStudent.enrollmentNo} • Code: ${selectedMaleAsstStudent.code}',
+                                            style: const TextStyle(fontSize: 11, color: Color(0xFF0369A1)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _maleAsstCodeCtrl,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: const InputDecoration(
+                                labelText: 'Asst. CR Passcode',
+                                hintText: 'e.g. ACR2026',
+                                prefixIcon: Icon(Icons.how_to_reg, color: Color(0xFF0284C7), size: 18),
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
 
-                    // 3. ASSISTANT CR 2
-                    const Text('Assistant CR (Section Coordinator 2):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFBE185D))),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFDF2F8),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFFBCFE8)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _selectedFemaleAsstRoll,
-                          isExpanded: true,
-                          items: widget.state.students.where((s) => s.isFemale).map((s) {
-                            return DropdownMenuItem<int>(
-                              value: s.rollNo,
-                              child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
-                            );
-                          }).toList(),
-                          onChanged: (val) => setState(() => _selectedFemaleAsstRoll = val),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _femaleAsstCodeCtrl,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        labelText: 'Asst. CR Passcode (Section 2)',
-                        hintText: 'e.g. ACR2026',
-                        prefixIcon: Icon(Icons.how_to_reg, color: Color(0xFFDB2777), size: 18),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
+                            const Divider(height: 28),
+
+                            // 3. ASSISTANT CR 2
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('3. Assistant CR (Section Coordinator 2):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFBE185D))),
+                                if (selectedFemaleAsstStudent != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDB2777).withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      selectedFemaleAsstStudent.name,
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFDB2777)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFDF2F8),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFFBCFE8)),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value: _selectedFemaleAsstRoll,
+                                  isExpanded: true,
+                                  items: widget.state.students.where((s) => s.isFemale).map((s) {
+                                    return DropdownMenuItem<int>(
+                                      value: s.rollNo,
+                                      child: Text('#${s.rollNo.toString().padLeft(2, '0')} ${s.name} (${s.enrollmentNo})', style: const TextStyle(fontSize: 13)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) => setState(() => _selectedFemaleAsstRoll = val),
+                                ),
+                              ),
+                            ),
+                            if (selectedFemaleAsstStudent != null) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFDF2F8),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFBCFE8)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.assignment_ind, color: Color(0xFFDB2777), size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Appointed Asst. CR: ${selectedFemaleAsstStudent.name}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF831843)),
+                                          ),
+                                          Text(
+                                            'Roll #${selectedFemaleAsstStudent.rollNo} • Enrollment: ${selectedFemaleAsstStudent.enrollmentNo} • Code: ${selectedFemaleAsstStudent.code}',
+                                            style: const TextStyle(fontSize: 11, color: Color(0xFFBE185D)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _femaleAsstCodeCtrl,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: const InputDecoration(
+                                labelText: 'Asst. CR Passcode (Section 2)',
+                                hintText: 'e.g. ACR2026',
+                                prefixIcon: Icon(Icons.how_to_reg, color: Color(0xFFDB2777), size: 18),
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
 
                     const Divider(height: 28),
@@ -706,9 +877,9 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
               const SizedBox(height: 28),
 
               // Absent students list
-              const Text(
-                "Today's Absent Students (9)",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              Text(
+                "Today's Absent Students (${absentees.length})",
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 12),
 

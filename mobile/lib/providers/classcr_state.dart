@@ -133,6 +133,35 @@ class ClassCRState extends ChangeNotifier {
       );
     }
 
+    final savedCrName = prefs.getString('classcr_delegation_cr_name');
+    final savedCrRoll = prefs.getInt('classcr_delegation_cr_roll');
+    final savedCrCode = prefs.getString('classcr_delegation_cr_code');
+    final savedMaleAsstName = prefs.getString('classcr_delegation_male_asst_name');
+    final savedMaleAsstRoll = prefs.getInt('classcr_delegation_male_asst_roll');
+    final savedMaleAsstCode = prefs.getString('classcr_delegation_male_asst_code');
+    final savedFemaleAsstName = prefs.getString('classcr_delegation_female_asst_name');
+    final savedFemaleAsstRoll = prefs.getInt('classcr_delegation_female_asst_roll');
+    final savedFemaleAsstCode = prefs.getString('classcr_delegation_female_asst_code');
+    final savedStudentCode = prefs.getString('classcr_delegation_student_code');
+
+    if (savedCrName != null || savedFemaleAsstName != null || savedMaleAsstName != null) {
+      _delegation = ClassDelegation(
+        classId: 'I-MCA-A',
+        advisorName: _delegation.advisorName,
+        advisorCode: _delegation.advisorCode,
+        crRoll: savedCrRoll ?? _delegation.crRoll,
+        crName: savedCrName ?? _delegation.crName,
+        crCode: savedCrCode ?? _delegation.crCode,
+        maleAsstRoll: savedMaleAsstRoll ?? _delegation.maleAsstRoll,
+        maleAsstName: savedMaleAsstName ?? _delegation.maleAsstName,
+        maleAsstCode: savedMaleAsstCode ?? _delegation.maleAsstCode,
+        femaleAsstRoll: savedFemaleAsstRoll ?? _delegation.femaleAsstRoll,
+        femaleAsstName: savedFemaleAsstName ?? _delegation.femaleAsstName,
+        femaleAsstCode: savedFemaleAsstCode ?? _delegation.femaleAsstCode,
+        studentCode: savedStudentCode ?? _delegation.studentCode,
+      );
+    }
+
     _checkBackendAndLoad();
   }
 
@@ -265,6 +294,19 @@ class ClassCRState extends ChangeNotifier {
       studentCode: (studentCode ?? _delegation.studentCode).toUpperCase(),
     );
     notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    if (crName != null) await prefs.setString('classcr_delegation_cr_name', crName);
+    if (crRoll != null) await prefs.setInt('classcr_delegation_cr_roll', crRoll);
+    if (crCode != null) await prefs.setString('classcr_delegation_cr_code', crCode.toUpperCase());
+    if (maleAsstName != null) await prefs.setString('classcr_delegation_male_asst_name', maleAsstName);
+    if (maleAsstRoll != null) await prefs.setInt('classcr_delegation_male_asst_roll', maleAsstRoll);
+    if (maleAsstCode != null) await prefs.setString('classcr_delegation_male_asst_code', maleAsstCode.toUpperCase());
+    if (femaleAsstName != null) await prefs.setString('classcr_delegation_female_asst_name', femaleAsstName);
+    if (femaleAsstRoll != null) await prefs.setInt('classcr_delegation_female_asst_roll', femaleAsstRoll);
+    if (femaleAsstCode != null) await prefs.setString('classcr_delegation_female_asst_code', femaleAsstCode.toUpperCase());
+    if (studentCode != null) await prefs.setString('classcr_delegation_student_code', studentCode.toUpperCase());
+
     return await ApiService.advisorDelegate(
       classId: classId,
       crRoll: crRoll,

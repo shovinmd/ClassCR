@@ -530,14 +530,14 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFBFDBFE)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 18, color: Color(0xFF1D4ED8)),
-                  SizedBox(width: 8),
+                  const Icon(Icons.info_outline, size: 18, color: Color(0xFF1D4ED8)),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'This transmits your section check live to CR (Muthuvel R). After final review, CR will lock and dispatch morning attendance to Class Advisor & Lecture Faculty.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF1E40AF), fontWeight: FontWeight.w600),
+                      'This transmits your section check live to CR (${widget.state.delegation.crName}). After final review, CR will lock and dispatch morning attendance to Class Advisor & Lecture Faculty.',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF1E40AF), fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],

@@ -70,13 +70,13 @@ class CrHomeScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.cardBorder),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 14, color: AppColors.primary),
-                    SizedBox(width: 6),
+                    const Icon(Icons.calendar_today, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 6),
                     Text(
-                      '18 Sep 2026',
-                      style: TextStyle(
+                      state.formattedTodayDate,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
