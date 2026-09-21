@@ -214,6 +214,7 @@ class _MainShellState extends State<MainShell> {
           body: Column(
             children: [
               AppHeader(state: widget.state),
+              _SyncStatusBanner(state: widget.state),
               Expanded(child: contentWidget),
             ],
           ),
@@ -269,7 +270,7 @@ class _MainShellState extends State<MainShell> {
                   title: const Text('Backend API Status'),
                   subtitle: Text(
                     widget.state.isOnline
-                        ? 'Connected to Express Server (http://localhost:5000)'
+                        ? 'Connected to Production Server (Vercel)'
                         : 'Offline Mode (Local Storage)',
                   ),
                   trailing: TextButton(
@@ -296,6 +297,80 @@ class _MainShellState extends State<MainShell> {
                   subtitle: Text('v1.0.0 (MCA 2026–2028 Edition)'),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact banner that sits below the AppHeader and shows offline / syncing / synced state.
+/// Renders nothing (zero height) when the app is fully online and in sync.
+class _SyncStatusBanner extends StatelessWidget {
+  final ClassCRState state;
+  const _SyncStatusBanner({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final isOffline = !state.isOnline;
+    final isSyncing = state.isSyncing;
+    final justSynced = state.justSynced;
+    final pending = state.pendingSyncCount;
+
+    // Nothing to show — fully online, no pending items
+    if (!isOffline && !isSyncing && !justSynced) return const SizedBox.shrink();
+
+    Color bgColor;
+    IconData icon;
+    String message;
+
+    if (justSynced) {
+      bgColor = const Color(0xFF16A34A); // green-600
+      icon = Icons.cloud_done_rounded;
+      message = 'Attendance synced to server ✅';
+    } else if (isSyncing) {
+      bgColor = const Color(0xFFD97706); // amber-600
+      icon = Icons.sync_rounded;
+      message = pending > 0
+          ? 'Syncing $pending record${pending > 1 ? 's' : ''} to server…'
+          : 'Syncing to server…';
+    } else {
+      // Offline with pending data
+      bgColor = const Color(0xFFDC2626); // red-600
+      icon = Icons.cloud_off_rounded;
+      message = pending > 0
+          ? '🔴 Offline — $pending record${pending > 1 ? 's' : ''} saved locally'
+          : '🔴 Offline — marks saved locally';
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: double.infinity,
+      color: bgColor,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      child: Row(
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          isSyncing
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : Icon(icon, color: Colors.white, size: 15),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -22,8 +23,13 @@ class ClassCRState extends ChangeNotifier {
 
   // Real-time synchronization timer
   Timer? _realtimeTimer;
+  Timer? _connectivityTimer;
   bool _isRealtimeSyncActive = false;
   bool get isRealtimeSyncActive => _isRealtimeSyncActive;
+
+  // Sync status — _justSynced is true for ~3s after a successful auto-sync
+  bool _justSynced = false;
+  bool get justSynced => _justSynced;
 
   // Active User State
   AppUser _currentUser = const AppUser(
@@ -188,10 +194,25 @@ class ClassCRState extends ChangeNotifier {
         _absentRolls.addAll(remoteToday.absentRolls);
         _crNotes = remoteToday.notes;
       } else {
-        await _loadAttendanceForDate(_todayDate);
+        // Try to restore a local draft saved while offline
+        await _restoreLocalDraftIfAny();
+        if (_currentAttendanceRecord == null) {
+          await _loadAttendanceForDate(_todayDate);
+        }
+      }
+      // Push any queued offline records now that we're back online
+      final queue = await ApiService.loadOfflineQueue();
+      if (queue.isNotEmpty) {
+        await syncPendingRecords();
       }
     } else {
-      await _loadAttendanceForDate(_todayDate);
+      // Offline — restore whatever was saved locally
+      await _restoreLocalDraftIfAny();
+      if (_currentAttendanceRecord == null) {
+        await _loadAttendanceForDate(_todayDate);
+      }
+      // Start watching for connectivity to return
+      _startConnectivityWatcher();
     }
     final queue = await ApiService.loadOfflineQueue();
     _pendingSyncCount = queue.length;
@@ -807,12 +828,13 @@ class ClassCRState extends ChangeNotifier {
     autoSaveRealtimeDraft();
   }
 
-  // Real-time synchronization methods (Zero Delay between CR and Asst. CR)
+  // ─── Real-time synchronization ───────────────────────────────────────────
+
   void startRealtimeSync() {
     _stopRealtimeTimer();
     _isRealtimeSyncActive = true;
     fetchRealtimeAttendance();
-    // Poll every 3 seconds for instant real-time sync across devices
+    // Poll every 3 seconds for real-time sync across devices
     _realtimeTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       fetchRealtimeAttendance();
     });
@@ -826,6 +848,31 @@ class ClassCRState extends ChangeNotifier {
   void _stopRealtimeTimer() {
     _realtimeTimer?.cancel();
     _realtimeTimer = null;
+  }
+
+  /// Connectivity watcher — pings every 5s when offline.
+  /// As soon as the network is back, syncs queued records and switches
+  /// to realtime-poll mode.
+  void _startConnectivityWatcher() {
+    _connectivityTimer?.cancel();
+    _connectivityTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (_isOnline) {
+        // Already back online — switch to realtime poll and stop this watcher
+        _connectivityTimer?.cancel();
+        _connectivityTimer = null;
+        return;
+      }
+      final reachable = await ApiService.pingBackend();
+      if (reachable) {
+        _isOnline = true;
+        _connectivityTimer?.cancel();
+        _connectivityTimer = null;
+        notifyListeners();
+        // Push local draft & queued records now that we're back
+        await _pushLocalDraftIfAny();
+        await syncPendingRecords();
+      }
+    });
   }
 
   Future<void> fetchRealtimeAttendance() async {
@@ -854,25 +901,130 @@ class ClassCRState extends ChangeNotifier {
     } catch (_) {}
   }
 
-  // Instant real-time background save of marks
-  Future<void> autoSaveRealtimeDraft() async {
-    if (!_isOnline || isAttendanceLocked) return;
+  // ─── Offline-first draft helpers ─────────────────────────────────────────
+
+  /// Always persist current absent rolls locally (SharedPreferences).
+  Future<void> _saveLocalDraft() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final draft = json.encode({
+        'date': _todayDate,
+        'absentRolls': _absentRolls.toList(),
+        'notes': _crNotes,
+        'markedByName': _currentUser.name,
+        'markedByRole': _currentUser.roleDisplayName,
+      });
+      await prefs.setString('classcr_local_draft', draft);
+    } catch (_) {}
+  }
+
+  /// Restore a local draft saved while offline, for today's date.
+  Future<void> _restoreLocalDraftIfAny() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('classcr_local_draft');
+      if (raw == null) return;
+      final data = json.decode(raw) as Map<String, dynamic>;
+      if (data['date'] != _todayDate) return; // Draft is for a different day
+      final rolls = (data['absentRolls'] as List).cast<int>();
+      _absentRolls.clear();
+      _absentRolls.addAll(rolls);
+      _crNotes = data['notes'] as String? ?? _crNotes;
+      // Build a local record so the UI shows the saved state
+      _currentAttendanceRecord = AttendanceRecord(
+        id: 'local_draft_$_todayDate',
+        classId: _currentUser.classId ?? 'I-MCA-A',
+        date: _todayDate,
+        totalStudents: totalCount,
+        presentCount: presentCount,
+        absentCount: absentCount,
+        absentRolls: rolls,
+        markedByName: data['markedByName'] as String? ?? _currentUser.name,
+        markedByRole: data['markedByRole'] as String? ?? _currentUser.roleDisplayName,
+        isLocked: false,
+        status: 'draft',
+        isSynced: false,
+        notes: _crNotes,
+      );
+    } catch (_) {}
+  }
+
+  /// When connectivity returns, push the saved local draft to the server.
+  Future<void> _pushLocalDraftIfAny() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('classcr_local_draft');
+      if (raw == null) return;
+      final data = json.decode(raw) as Map<String, dynamic>;
+      if (data['date'] != _todayDate) return;
+      final rolls = (data['absentRolls'] as List).cast<int>();
       await ApiService.submitAttendance(
         classId: _currentUser.classId ?? 'I-MCA-A',
         date: _todayDate,
-        absentRolls: _absentRolls.toList()..sort(),
-        notes: _crNotes,
+        absentRolls: rolls,
+        notes: data['notes'] as String?,
         userRole: _currentUser.role.name,
         userName: _currentUser.name,
-        markedByName: _currentAttendanceRecord?.markedByName ?? _currentUser.name,
-        markedByRole: _currentAttendanceRecord?.markedByRole ?? _currentUser.roleDisplayName,
+        markedByName: data['markedByName'] as String?,
+        markedByRole: data['markedByRole'] as String?,
         isLocked: false,
-        asstCrVerified: isSectionVerifiedByAsstCr,
-        asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
-        asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
       );
+      await prefs.remove('classcr_local_draft');
     } catch (_) {}
+  }
+
+  /// Instant real-time background save of marks.
+  /// Online → push to server; Offline → save locally and queue.
+  Future<void> autoSaveRealtimeDraft() async {
+    if (isAttendanceLocked) return;
+    // Always save locally first (offline safety net)
+    await _saveLocalDraft();
+    if (_isOnline) {
+      try {
+        await ApiService.submitAttendance(
+          classId: _currentUser.classId ?? 'I-MCA-A',
+          date: _todayDate,
+          absentRolls: _absentRolls.toList()..sort(),
+          notes: _crNotes,
+          userRole: _currentUser.role.name,
+          userName: _currentUser.name,
+          markedByName: _currentAttendanceRecord?.markedByName ?? _currentUser.name,
+          markedByRole: _currentAttendanceRecord?.markedByRole ?? _currentUser.roleDisplayName,
+          isLocked: false,
+          asstCrVerified: isSectionVerifiedByAsstCr,
+          asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
+          asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
+        );
+      } catch (_) {
+        // Push to offline queue if the live call fails
+        _isOnline = false;
+        _startConnectivityWatcher();
+        notifyListeners();
+        await _queueCurrentDraft();
+      }
+    } else {
+      // Queue for upload when network returns
+      await _queueCurrentDraft();
+    }
+  }
+
+  Future<void> _queueCurrentDraft() async {
+    final draft = AttendanceRecord(
+      id: 'att_${_todayDate.replaceAll('-', '')}',
+      classId: _currentUser.classId ?? 'I-MCA-A',
+      date: _todayDate,
+      totalStudents: totalCount,
+      presentCount: presentCount,
+      absentCount: absentCount,
+      absentRolls: _absentRolls.toList()..sort(),
+      markedByName: _currentUser.name,
+      markedByRole: _currentUser.roleDisplayName,
+      isLocked: false,
+      status: 'draft',
+      isSynced: false,
+      notes: _crNotes,
+    );
+    await _queueRecord(draft);
   }
 
   // Assistant CR completes verification of assigned section and transmits to CR
@@ -995,7 +1147,7 @@ class ClassCRState extends ChangeNotifier {
       isLocked: isLocked,
       lastModifiedBy: _currentAttendanceRecord?.lastModifiedBy,
       status: isLocked ? 'submitted' : 'draft',
-      submittedAt: _currentAttendanceRecord?.submittedAt ?? '09:18 AM',
+      submittedAt: _currentAttendanceRecord?.submittedAt ?? _nowTimeStr(),
       notes: _crNotes,
       isSynced: _isOnline,
       asstCrVerified: _currentAttendanceRecord?.asstCrVerified ?? false,
@@ -1062,7 +1214,7 @@ class ClassCRState extends ChangeNotifier {
       isLocked: true,
       lastModifiedBy: advisorName,
       status: 'submitted',
-      submittedAt: _currentAttendanceRecord?.submittedAt ?? '09:18 AM',
+      submittedAt: _currentAttendanceRecord?.submittedAt ?? _nowTimeStr(),
       notes: _crNotes,
       isSynced: _isOnline,
     );
@@ -1158,6 +1310,8 @@ class ClassCRState extends ChangeNotifier {
 
     final queue = await ApiService.loadOfflineQueue();
     if (queue.isEmpty) {
+      // Nothing queued but check for a local draft
+      await _pushLocalDraftIfAny();
       _isSyncing = false;
       notifyListeners();
       return;
@@ -1170,6 +1324,16 @@ class ClassCRState extends ChangeNotifier {
         date: rec.date,
         absentRolls: rec.absentRolls,
         notes: rec.notes,
+        userRole: rec.markedByRole?.toLowerCase() ?? 'cr',
+        userName: rec.markedByName,
+        markedByName: rec.markedByName,
+        markedByRole: rec.markedByRole,
+        isLocked: rec.isLocked,
+        asstCrVerified: rec.asstCrVerified,
+        asstCrVerifiedBy: rec.asstCrVerifiedBy,
+        asstCrVerifiedAt: rec.asstCrVerifiedAt,
+        periodNo: rec.periodNo,
+        periodSubject: rec.periodSubject,
       );
       if (!success) {
         allSuccess = false;
@@ -1178,9 +1342,28 @@ class ClassCRState extends ChangeNotifier {
     }
 
     if (allSuccess) {
-      await ApiService.saveOfflineQueue([]);
+      // Clear both the queue and the local draft — server has everything
+      await ApiService.clearOfflineQueue();
       _pendingSyncCount = 0;
       _isOnline = true;
+      // Show "Synced ✅" banner for 3 seconds
+      _justSynced = true;
+      notifyListeners();
+      Future.delayed(const Duration(seconds: 3), () {
+        _justSynced = false;
+        notifyListeners();
+      });
+      // Reload fresh server data
+      final remoteToday = await ApiService.fetchTodayAttendance(
+        classId: _currentUser.classId ?? 'I-MCA-A',
+        date: _todayDate,
+      );
+      if (remoteToday != null) {
+        _currentAttendanceRecord = remoteToday;
+        _absentRolls.clear();
+        _absentRolls.addAll(remoteToday.absentRolls);
+        _crNotes = remoteToday.notes;
+      }
     }
 
     _isSyncing = false;
@@ -1375,9 +1558,21 @@ class ClassCRState extends ChangeNotifier {
     return yyyyMmDd;
   }
 
+  /// Returns current wall-clock time as a formatted string, e.g. "09:18 AM"
+  String _nowTimeStr() {
+    final now = DateTime.now();
+    final hour = now.hour;
+    final minute = now.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+    return '${displayHour.toString().padLeft(2, '0')}:$minute $period';
+  }
+
   @override
   void dispose() {
     _stopRealtimeTimer();
+    _connectivityTimer?.cancel();
+    _connectivityTimer = null;
     super.dispose();
   }
 }

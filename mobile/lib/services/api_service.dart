@@ -5,9 +5,9 @@ import '../models/models.dart';
 
 class ApiService {
   // Live Vercel production endpoint
-  static String vercelProductionUrl = 'https://server-eta-dun-48.vercel.app/api';
+  static String vercelProductionUrl = 'https://server-1op4q1hvm-shovin-michel-davids-projects.vercel.app/api';
 
-  static String _activeBaseUrl = 'https://server-eta-dun-48.vercel.app/api';
+  static String _activeBaseUrl = 'https://server-1op4q1hvm-shovin-michel-davids-projects.vercel.app/api';
 
   static String get baseUrl => _activeBaseUrl;
 
@@ -23,10 +23,8 @@ class ApiService {
     final savedUrl = prefs.getString('classcr_backend_url');
 
     final candidateUrls = [
-      if (savedUrl != null && savedUrl.isNotEmpty) savedUrl,
-      if (vercelProductionUrl.isNotEmpty) vercelProductionUrl,
-      'http://localhost:5000/api',
-      'http://10.0.2.2:5000/api',
+      vercelProductionUrl,
+      if (savedUrl != null && savedUrl.isNotEmpty && savedUrl != vercelProductionUrl) savedUrl,
     ];
 
     for (final url in candidateUrls) {
@@ -157,6 +155,25 @@ class ApiService {
         .map((s) => AttendanceRecord.fromJson(json.decode(s)))
         .toList();
   }
+
+  static Future<void> clearOfflineQueue() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('offline_attendance_queue');
+    await prefs.remove('classcr_local_draft');
+  }
+
+  /// Lightweight ping — returns true if backend is reachable right now.
+  static Future<bool> pingBackend() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_activeBaseUrl/health'))
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
 
   // Fetch current class delegation (Advisor, CR, Asst CR, Passcodes)
   static Future<ClassDelegation?> fetchDelegation({String classId = 'I-MCA-A'}) async {

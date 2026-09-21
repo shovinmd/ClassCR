@@ -4,7 +4,27 @@
 -- https://supabase.com/dashboard/project/fbqafmahrhykcpojprrh/sql
 -- ==========================================================
 
+-- 0. Migrations — safely add columns that may be missing from older deployments
+-- Drop stale unique constraint on enrollment_no (roll_no is the real PK)
+ALTER TABLE public.students DROP CONSTRAINT IF EXISTS students_enrollment_no_key;
+
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'M';
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS dob TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS ccr_code TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS department TEXT DEFAULT 'MCA';
+
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS asst_cr_verified BOOLEAN DEFAULT false;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS asst_cr_verified_by TEXT;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS asst_cr_verified_at TEXT;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS period_no INTEGER;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS period_subject TEXT;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowledgment_status TEXT;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowledged_by TEXT;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowledged_at TEXT;
+ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_rejection_reason TEXT;
+
 -- 1. Create Tables
+
 
 CREATE TABLE IF NOT EXISTS public.classes (
   id TEXT PRIMARY KEY,
