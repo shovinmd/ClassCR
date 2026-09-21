@@ -146,6 +146,10 @@ class AttendanceRecord {
   final String? asstCrVerifiedAt;
   final int? periodNo;
   final String? periodSubject;
+  final String? facultyAcknowledgmentStatus; // 'pending', 'acknowledged', 'rejected'
+  final String? facultyRejectionReason;
+  final String? facultyAcknowledgedBy;
+  final String? facultyAcknowledgedAt;
 
   const AttendanceRecord({
     required this.id,
@@ -168,6 +172,10 @@ class AttendanceRecord {
     this.asstCrVerifiedAt,
     this.periodNo,
     this.periodSubject,
+    this.facultyAcknowledgmentStatus = 'pending',
+    this.facultyRejectionReason,
+    this.facultyAcknowledgedBy,
+    this.facultyAcknowledgedAt,
   });
 
   AttendanceRecord copyWith({
@@ -191,6 +199,10 @@ class AttendanceRecord {
     String? asstCrVerifiedAt,
     int? periodNo,
     String? periodSubject,
+    String? facultyAcknowledgmentStatus,
+    String? facultyRejectionReason,
+    String? facultyAcknowledgedBy,
+    String? facultyAcknowledgedAt,
   }) {
     return AttendanceRecord(
       id: id ?? this.id,
@@ -213,6 +225,10 @@ class AttendanceRecord {
       asstCrVerifiedAt: asstCrVerifiedAt ?? this.asstCrVerifiedAt,
       periodNo: periodNo ?? this.periodNo,
       periodSubject: periodSubject ?? this.periodSubject,
+      facultyAcknowledgmentStatus: facultyAcknowledgmentStatus ?? this.facultyAcknowledgmentStatus,
+      facultyRejectionReason: facultyRejectionReason ?? this.facultyRejectionReason,
+      facultyAcknowledgedBy: facultyAcknowledgedBy ?? this.facultyAcknowledgedBy,
+      facultyAcknowledgedAt: facultyAcknowledgedAt ?? this.facultyAcknowledgedAt,
     );
   }
 
@@ -238,6 +254,10 @@ class AttendanceRecord {
       asstCrVerifiedAt: json['asstCrVerifiedAt']?.toString(),
       periodNo: json['periodNo'] is int ? json['periodNo'] : int.tryParse(json['periodNo']?.toString() ?? ''),
       periodSubject: json['periodSubject']?.toString(),
+      facultyAcknowledgmentStatus: json['facultyAcknowledgmentStatus']?.toString() ?? 'pending',
+      facultyRejectionReason: json['facultyRejectionReason']?.toString(),
+      facultyAcknowledgedBy: json['facultyAcknowledgedBy']?.toString(),
+      facultyAcknowledgedAt: json['facultyAcknowledgedAt']?.toString(),
     );
   }
 
@@ -262,6 +282,10 @@ class AttendanceRecord {
     'asstCrVerifiedAt': asstCrVerifiedAt,
     'periodNo': periodNo,
     'periodSubject': periodSubject,
+    'facultyAcknowledgmentStatus': facultyAcknowledgmentStatus,
+    'facultyRejectionReason': facultyRejectionReason,
+    'facultyAcknowledgedBy': facultyAcknowledgedBy,
+    'facultyAcknowledgedAt': facultyAcknowledgedAt,
   };
 }
 

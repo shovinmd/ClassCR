@@ -400,11 +400,39 @@ class CrHomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          Card(
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: state.history.length,
+          if (state.history.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.event_note_outlined, size: 36, color: AppColors.textSecondary.withOpacity(0.5)),
+                  const SizedBox(height: 10),
+                  Text(
+                    'No attendance reports submitted yet for ${state.formattedTodayDate}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Attendance logs for today will appear here as soon as submitted.',
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          else
+            Card(
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: state.history.length,
               separatorBuilder: (_, _) => const Divider(height: 1, indent: 16, endIndent: 16),
               itemBuilder: (context, index) {
                 final rec = state.history[index];

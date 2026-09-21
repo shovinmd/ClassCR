@@ -81,8 +81,8 @@ class ClassCRState extends ChangeNotifier {
   int get absentCount => _absentRolls.length;
   int get presentCount => totalCount - absentCount;
 
-  // Attendance History
-  List<AttendanceRecord> _history = List.from(kInitialHistoryRecords);
+  // Attendance History (real sessions only, no mockup dates)
+  List<AttendanceRecord> _history = [];
   List<AttendanceRecord> get history => _history;
 
   // Offline / Sync status
@@ -1098,6 +1098,48 @@ class ClassCRState extends ChangeNotifier {
 
     notifyListeners();
     return true;
+  }
+
+  // Faculty Acknowledges Lecture Attendance
+  Future<void> acknowledgeLectureAttendance({
+    required int periodNo,
+    required String facultyName,
+  }) async {
+    final now = DateTime.now();
+    final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+    if (_currentAttendanceRecord != null) {
+      _currentAttendanceRecord = _currentAttendanceRecord!.copyWith(
+        facultyAcknowledgmentStatus: 'acknowledged',
+        facultyAcknowledgedBy: facultyName,
+        facultyAcknowledgedAt: timeStr,
+        facultyRejectionReason: null,
+      );
+      final idx = _history.indexWhere((r) => r.date == _todayDate);
+      if (idx >= 0) _history[idx] = _currentAttendanceRecord!;
+      notifyListeners();
+    }
+  }
+
+  // Faculty Rejects Lecture Attendance with Discrepancy Reason
+  Future<void> rejectLectureAttendance({
+    required int periodNo,
+    required String facultyName,
+    required String reason,
+  }) async {
+    final now = DateTime.now();
+    final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+    if (_currentAttendanceRecord != null) {
+      _currentAttendanceRecord = _currentAttendanceRecord!.copyWith(
+        facultyAcknowledgmentStatus: 'rejected',
+        facultyAcknowledgedBy: facultyName,
+        facultyAcknowledgedAt: timeStr,
+        facultyRejectionReason: reason,
+        isLocked: false, // Allow CR / Asst CR to correct discrepancy and re-submit
+      );
+      final idx = _history.indexWhere((r) => r.date == _todayDate);
+      if (idx >= 0) _history[idx] = _currentAttendanceRecord!;
+      notifyListeners();
+    }
   }
 
   Future<void> _queueRecord(AttendanceRecord record) async {

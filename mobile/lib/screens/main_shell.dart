@@ -6,6 +6,7 @@ import '../widgets/app_header.dart';
 import '../widgets/role_switcher_sheet.dart';
 import 'cr/cr_home_screen.dart';
 import 'cr/mark_attendance_screen.dart';
+import 'cr/subject_attendance_screen.dart';
 import 'cr/report_screen.dart';
 import 'advisor/advisor_dashboard_screen.dart';
 import 'staff/staff_dashboard_screen.dart';
@@ -162,6 +163,11 @@ class _MainShellState extends State<MainShell> {
               label: 'Attendance',
             ),
             NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined),
+              selectedIcon: Icon(Icons.menu_book, color: Color(0xFF0D9488)),
+              label: 'Subjects',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.description_outlined),
               selectedIcon: Icon(Icons.description, color: AppColors.primary),
               label: 'Reports',
@@ -179,6 +185,8 @@ class _MainShellState extends State<MainShell> {
           } else if (safeIndex == 1) {
             contentWidget = MarkAttendanceScreen(state: widget.state);
           } else if (safeIndex == 2) {
+            contentWidget = SubjectAttendanceScreen(state: widget.state);
+          } else if (safeIndex == 3) {
             contentWidget = ReportScreen(state: widget.state);
           } else {
             contentWidget = _buildSettingsView();
