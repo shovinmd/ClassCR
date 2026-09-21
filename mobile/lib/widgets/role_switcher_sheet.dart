@@ -32,7 +32,9 @@ class RoleSwitcherSheet extends StatelessWidget {
     } else if (role == UserRole.assistantCr) {
       roleLabel = isFemale == true ? 'Female Assistant CR (Girls Section)' : 'Male Assistant CR (Boys Section)';
     } else if (role == UserRole.advisor) {
-      roleLabel = 'Class Advisor';
+      roleLabel = 'Class Advisor (Mrs. V. Nandhini, AP/CA)';
+    } else if (role == UserRole.staff) {
+      roleLabel = 'Subject Teacher / Faculty';
     }
 
     final controller = TextEditingController();
@@ -221,28 +223,39 @@ class RoleSwitcherSheet extends StatelessWidget {
               context,
               isSelected: currentRole == UserRole.advisor,
               title: '3. Class Advisor',
-              subtitle: 'Dr. K. Senthil Nathan • Review submissions, confirm, & announce',
+              subtitle: 'Mrs. V. Nandhini, AP/CA • Class Advisor & Academic Mentor',
               icon: Icons.psychology_alt_outlined,
               color: const Color(0xFF0284C7),
               onTap: () => _promptPasscodeAndSwitch(context, UserRole.advisor),
             ),
 
-            // 4. Student
+            // 4. Subject Teacher / Faculty
+            _buildCustomTile(
+              context,
+              isSelected: currentRole == UserRole.staff,
+              title: '4. Subject Teacher / Faculty',
+              subtitle: 'OS (Tamilmani), MAT (Sivaramakrishnan), DT (Shivashankari), SE (Deepa)',
+              icon: Icons.menu_book_outlined,
+              color: const Color(0xFF0D9488),
+              onTap: () => _promptPasscodeAndSwitch(context, UserRole.staff),
+            ),
+
+            // 5. Student
             _buildCustomTile(
               context,
               isSelected: currentRole == UserRole.student,
-              title: '4. Student Portal',
+              title: '5. Student Portal',
               subtitle: 'View attendance percentage, personal logs, and shortage alerts',
               icon: Icons.school_outlined,
               color: AppColors.presentGreen,
               onTap: () => _promptPasscodeAndSwitch(context, UserRole.student),
             ),
 
-            // 5. HOD
+            // 6. HOD
             _buildCustomTile(
               context,
               isSelected: currentRole == UserRole.admin,
-              title: '5. Head of Department (HOD)',
+              title: '6. Head of Department (HOD)',
               subtitle: 'Department & Academic Oversight (Classes, Faculty, Attendance)',
               icon: Icons.admin_panel_settings_outlined,
               color: const Color(0xFF8B5CF6),

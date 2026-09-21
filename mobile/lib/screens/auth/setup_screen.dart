@@ -97,7 +97,9 @@ class _SetupScreenState extends State<SetupScreen> {
 
     if (_selectedRole == UserRole.advisor) {
       userName = verification['name']?.toString() ?? _advisorNameController.text.trim();
-      if (userName.isEmpty) userName = 'Prof. Nandhini G (Navi Ma\'am)';
+      if (userName.isEmpty) userName = 'Mrs. V. Nandhini, AP/CA';
+    } else if (_selectedRole == UserRole.staff) {
+      userName = verification['name']?.toString() ?? 'Ms. M. Tamilmani, AP/CA';
     } else if (_selectedRole == UserRole.admin) {
       userName = verification['name']?.toString() ?? 'Head of Department (HOD)';
     } else {
@@ -134,7 +136,8 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
       );
 
-      Navigator.of(context).pushReplacement(
+      Navigator.pushReplacement(
+        context,
         MaterialPageRoute(builder: (_) => MainShell(state: widget.state)),
       );
     }
@@ -148,6 +151,8 @@ class _SetupScreenState extends State<SetupScreen> {
         return 'Assistant CR (Asst. CR)';
       case UserRole.advisor:
         return 'Class Advisor';
+      case UserRole.staff:
+        return 'Subject Teacher / Faculty';
       case UserRole.student:
         return 'Student';
       case UserRole.admin:

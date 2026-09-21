@@ -8,6 +8,7 @@ import 'cr/cr_home_screen.dart';
 import 'cr/mark_attendance_screen.dart';
 import 'cr/report_screen.dart';
 import 'advisor/advisor_dashboard_screen.dart';
+import 'staff/staff_dashboard_screen.dart';
 import 'student/student_portal_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 
@@ -28,11 +29,11 @@ class _MainShellState extends State<MainShell> {
     return ListenableBuilder(
       listenable: widget.state,
       builder: (context, _) {
-        final role = widget.state.currentRole;
+        final role = widget.state.currentUser.role;
 
         Widget contentWidget;
         if (_currentIndex == 1) {
-          // Students Tab
+          // Students / Mark Attendance Tab
           contentWidget = MarkAttendanceScreen(state: widget.state);
         } else if (_currentIndex == 2) {
           // Reports Tab
@@ -49,6 +50,9 @@ class _MainShellState extends State<MainShell> {
               break;
             case UserRole.advisor:
               contentWidget = AdvisorDashboardScreen(state: widget.state);
+              break;
+            case UserRole.staff:
+              contentWidget = StaffDashboardScreen(state: widget.state);
               break;
             case UserRole.student:
               contentWidget = StudentPortalScreen(state: widget.state);
@@ -100,15 +104,17 @@ class _MainShellState extends State<MainShell> {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => RoleSwitcherSheet.show(context, widget.state),
-            icon: const Icon(Icons.swap_horiz, color: Colors.white),
-            label: Text(
-              'Switch Role (${widget.state.currentUser.role.name.toUpperCase()})',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            backgroundColor: AppColors.primary,
-          ),
+          floatingActionButton: role == UserRole.student
+              ? null
+              : FloatingActionButton.extended(
+                  onPressed: () => RoleSwitcherSheet.show(context, widget.state),
+                  icon: const Icon(Icons.swap_horiz, color: Colors.white),
+                  label: Text(
+                    'Switch Role (${widget.state.currentUser.role.name.toUpperCase()})',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  backgroundColor: AppColors.primary,
+                ),
         );
       },
     );

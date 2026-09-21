@@ -57,70 +57,84 @@ const List<Student> kInitialMcaStudents = [
   Student(rollNo: 52, enrollmentNo: "260738", name: "TASFIYA FARVIN S", gender: "F", ccrCode: "CCR-0052"),
 ];
 
-const List<AttendanceRecord> kInitialHistoryRecords = [
-  AttendanceRecord(
-    id: 'att_20260918',
-    classId: 'I-MCA-A',
-    date: '2026-09-18',
-    totalStudents: 52,
-    presentCount: 43,
-    absentCount: 9,
-    absentRolls: [13, 26, 27, 30, 33, 36, 43, 44, 52],
-    status: 'submitted',
-    submittedAt: '09:18 AM',
-    notes: 'Morning session attendance marked by CR MUTHUVEL R.',
-    isSynced: true,
-  ),
-  AttendanceRecord(
-    id: 'att_20260917',
-    classId: 'I-MCA-A',
-    date: '2026-09-17',
-    totalStudents: 52,
-    presentCount: 48,
-    absentCount: 4,
-    absentRolls: [6, 18, 26, 35],
-    status: 'submitted',
-    submittedAt: '09:10 AM',
-    notes: 'Full day classes conducted.',
-    isSynced: true,
-  ),
-  AttendanceRecord(
-    id: 'att_20260916',
-    classId: 'I-MCA-A',
-    date: '2026-09-16',
-    totalStudents: 52,
-    presentCount: 45,
-    absentCount: 7,
-    absentRolls: [2, 11, 21, 28, 33, 40, 51],
-    status: 'submitted',
-    submittedAt: '09:20 AM',
-    notes: 'Orientation overlap.',
-    isSynced: true,
-  ),
-  AttendanceRecord(
-    id: 'att_20260915',
-    classId: 'I-MCA-A',
-    date: '2026-09-15',
-    totalStudents: 52,
-    presentCount: 50,
-    absentCount: 2,
-    absentRolls: [13, 44],
-    status: 'submitted',
-    submittedAt: '09:15 AM',
-    notes: 'Lab session conducted.',
-    isSynced: true,
-  ),
-  AttendanceRecord(
-    id: 'att_20260914',
-    classId: 'I-MCA-A',
-    date: '2026-09-14',
-    totalStudents: 52,
-    presentCount: 47,
-    absentCount: 5,
-    absentRolls: [8, 17, 24, 38, 49],
-    status: 'submitted',
-    submittedAt: '09:12 AM',
-    notes: 'Regular lecture day.',
-    isSynced: true,
-  ),
-];
+String _formatIsoDate(DateTime d) =>
+    "${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+
+List<AttendanceRecord> getInitialHistoryRecords() {
+  final now = DateTime.now();
+  final d0 = _formatIsoDate(now);
+  final d1 = _formatIsoDate(now.subtract(const Duration(days: 1)));
+  final d2 = _formatIsoDate(now.subtract(const Duration(days: 2)));
+  final d3 = _formatIsoDate(now.subtract(const Duration(days: 3)));
+  final d4 = _formatIsoDate(now.subtract(const Duration(days: 4)));
+
+  return [
+    AttendanceRecord(
+      id: 'att_${d0.replaceAll('-', '')}',
+      classId: 'I-MCA-A',
+      date: d0,
+      totalStudents: 52,
+      presentCount: 43,
+      absentCount: 9,
+      absentRolls: const [13, 26, 27, 30, 33, 36, 43, 44, 52],
+      status: 'submitted',
+      submittedAt: '09:18 AM',
+      notes: 'Morning session attendance marked by CR MUTHUVEL R.',
+      isSynced: true,
+    ),
+    AttendanceRecord(
+      id: 'att_${d1.replaceAll('-', '')}',
+      classId: 'I-MCA-A',
+      date: d1,
+      totalStudents: 52,
+      presentCount: 48,
+      absentCount: 4,
+      absentRolls: const [6, 18, 26, 35],
+      status: 'submitted',
+      submittedAt: '09:10 AM',
+      notes: 'Full day classes conducted.',
+      isSynced: true,
+    ),
+    AttendanceRecord(
+      id: 'att_${d2.replaceAll('-', '')}',
+      classId: 'I-MCA-A',
+      date: d2,
+      totalStudents: 52,
+      presentCount: 45,
+      absentCount: 7,
+      absentRolls: const [2, 11, 21, 28, 33, 40, 51],
+      status: 'submitted',
+      submittedAt: '09:20 AM',
+      notes: 'Orientation overlap.',
+      isSynced: true,
+    ),
+    AttendanceRecord(
+      id: 'att_${d3.replaceAll('-', '')}',
+      classId: 'I-MCA-A',
+      date: d3,
+      totalStudents: 52,
+      presentCount: 50,
+      absentCount: 2,
+      absentRolls: const [13, 44],
+      status: 'submitted',
+      submittedAt: '09:15 AM',
+      notes: 'Lab session conducted.',
+      isSynced: true,
+    ),
+    AttendanceRecord(
+      id: 'att_${d4.replaceAll('-', '')}',
+      classId: 'I-MCA-A',
+      date: d4,
+      totalStudents: 52,
+      presentCount: 47,
+      absentCount: 5,
+      absentRolls: const [8, 17, 24, 38, 49],
+      status: 'submitted',
+      submittedAt: '09:12 AM',
+      notes: 'Regular lecture day.',
+      isSynced: true,
+    ),
+  ];
+}
+
+List<AttendanceRecord> get kInitialHistoryRecords => getInitialHistoryRecords();

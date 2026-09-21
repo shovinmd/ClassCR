@@ -5,6 +5,7 @@ class FacultyMember {
   final String role;
   final String? subject;
   final String? subjectCode;
+  final String? subjectAbb;
   final String? hallNo;
   final int? hours;
 
@@ -15,6 +16,7 @@ class FacultyMember {
     required this.role,
     this.subject,
     this.subjectCode,
+    this.subjectAbb,
     this.hallNo,
     this.hours,
   });
@@ -27,58 +29,96 @@ class FacultyMember {
       role: json['role']?.toString() ?? 'Faculty',
       subject: json['subject']?.toString(),
       subjectCode: json['subjectCode']?.toString() ?? json['code']?.toString(),
+      subjectAbb: json['subjectAbb']?.toString(),
       hallNo: json['hallNo']?.toString(),
-      hours: json['hours'] is int ? json['hours'] : int.tryParse(json['hours']?.toString() ?? '15'),
+      hours: json['hours'] is int ? json['hours'] : int.tryParse(json['hours']?.toString() ?? '7'),
     );
   }
 }
 
-// Official MCA Teachers from Manakula Vinayagar Institute of Technology
+// Official MCA Teachers from Manakula Vinayagar Institute of Technology (MVIT)
+// Department of Computer Applications - MCA I Semester (Batch 2026-2028, Hall 408)
 const List<FacultyMember> kOfficialMcaFaculty = [
   FacultyMember(
     name: 'Mrs. V. Nandhini, AP/CA',
-    designation: 'Assistant Professor',
+    designation: 'Assistant Professor / CA',
     department: 'MCA',
     role: 'Class Advisor',
-    subject: 'Class Advisor & Mentor',
+    subject: 'Object oriented Programming in C++ & Lab',
+    subjectCode: '25PMCT12 / 25PMCP11',
+    subjectAbb: 'OOPS',
     hallNo: '408',
+    hours: 11, // 7 theory + 4 lab
+  ),
+  FacultyMember(
+    name: 'Dr. S. Sivaramakrishnan, Prof/Maths',
+    designation: 'Professor / Maths',
+    department: 'Mathematics',
+    role: 'Subject Teacher',
+    subject: 'Mathematical Foundation of Computer Applications',
+    subjectCode: '25PMCT11',
+    subjectAbb: 'MAT',
+    hallNo: '408',
+    hours: 8,
+  ),
+  FacultyMember(
+    name: 'Mrs. K. Shivashankari, AP/CA',
+    designation: 'Assistant Professor / CA',
+    department: 'MCA',
+    role: 'Subject Teacher',
+    subject: 'Database Technology & Lab',
+    subjectCode: '25PMCT13 / 25PMCP12',
+    subjectAbb: 'DT',
+    hallNo: '408',
+    hours: 11, // 7 theory + 4 lab
   ),
   FacultyMember(
     name: 'Ms. M. Tamilmani, AP/CA',
-    designation: 'Assistant Professor',
+    designation: 'Assistant Professor / CA',
     department: 'MCA',
     role: 'Subject Teacher',
-    subject: 'Fundamentals of Computer Programming (FCP)',
-    subjectCode: '25PMCY01',
-    hours: 15,
+    subject: 'Operating Systems & Lab',
+    subjectCode: '25PMCT14 / 25PMCP13',
+    subjectAbb: 'OS',
+    hallNo: '408',
+    hours: 11, // 7 theory + 4 lab
   ),
   FacultyMember(
     name: 'Ms. V. Deepa, AP/CA',
-    designation: 'Assistant Professor',
+    designation: 'Assistant Professor / CA',
     department: 'MCA',
     role: 'Subject Teacher',
-    subject: 'Introduction to Problem Solving (IPS)',
-    subjectCode: '25PMCY02',
-    hours: 15,
+    subject: 'Software Engineering',
+    subjectCode: '25PMCT15',
+    subjectAbb: 'SE',
+    hallNo: '408',
+    hours: 6,
   ),
-  FacultyMember(
-    name: 'Ms. M. Shakira Banu, AP/CA',
-    designation: 'Assistant Professor',
-    department: 'MCA',
-    role: 'Subject Teacher',
-    subject: 'Introduction to Computer Organization (ICO)',
-    subjectCode: '25PMCY03',
-    hours: 15,
-  ),
-  FacultyMember(
-    name: 'Ms. S. Sharleen Banou, AP/CA',
-    designation: 'Assistant Professor',
-    department: 'MCA',
-    role: 'Subject Teacher',
-    subject: 'Fundamentals of Web Applications (FWA)',
-    subjectCode: '25PMCY04',
-    hours: 15,
-  ),
+];
+
+class PeriodTiming {
+  final int periodNo;
+  final String startTime;
+  final String endTime;
+  final String label;
+
+  const PeriodTiming({
+    required this.periodNo,
+    required this.startTime,
+    required this.endTime,
+    required this.label,
+  });
+}
+
+const List<PeriodTiming> kMcaPeriodTimings = [
+  PeriodTiming(periodNo: 1, startTime: '8:50 AM', endTime: '9:40 AM', label: 'Period 1 (Morning 1st Hour)'),
+  PeriodTiming(periodNo: 2, startTime: '9:40 AM', endTime: '10:30 AM', label: 'Period 2'),
+  PeriodTiming(periodNo: 3, startTime: '10:45 AM', endTime: '11:35 AM', label: 'Period 3'),
+  PeriodTiming(periodNo: 4, startTime: '11:35 AM', endTime: '12:25 PM', label: 'Period 4'),
+  PeriodTiming(periodNo: 5, startTime: '1:10 PM', endTime: '2:00 PM', label: 'Period 5'),
+  PeriodTiming(periodNo: 6, startTime: '2:00 PM', endTime: '2:50 PM', label: 'Period 6'),
+  PeriodTiming(periodNo: 7, startTime: '3:00 PM', endTime: '3:50 PM', label: 'Period 7'),
+  PeriodTiming(periodNo: 8, startTime: '3:50 PM', endTime: '4:40 PM', label: 'Period 8'),
 ];
 
 // Official Time Table Schedule for I MCA A (Batch 2026-2028, Hall 408)
@@ -92,26 +132,68 @@ class TimeTableSlot {
 const List<TimeTableSlot> kMcaTimeTable = [
   TimeTableSlot(
     day: 'Monday',
-    periods: ['IPS', 'FCP', 'IPS', 'FWA', 'FCP', 'FCP', 'ICO', 'IPS'],
+    periods: ['OS', 'MAT', 'OOPS', 'MAT', 'OOPS', 'SE', 'DT LAB', 'DT LAB'],
   ),
   TimeTableSlot(
     day: 'Tuesday',
-    periods: ['FWA', 'FCP', 'ICO', 'ICO', 'FWA', 'FWA', 'IPS', 'ICO'],
+    periods: ['OOPS', 'OS', 'MAT', 'OS', 'DT', 'OS LAB', 'OS LAB', 'OOPS'],
   ),
   TimeTableSlot(
     day: 'Wednesday',
-    periods: ['ICO', 'IPS', 'FWA', 'FWA', 'FCP', 'ICO', 'FWA', 'IPS'],
+    periods: ['DT', 'MAT', 'OOPS LAB', 'OOPS LAB', 'DT', 'OS', 'DT', 'SE'],
   ),
   TimeTableSlot(
     day: 'Thursday',
-    periods: ['IPS', 'ICO', 'FCP', 'IPS', 'IPS', 'FWA', 'FCP', 'ICO'],
+    periods: ['SE', 'OS LAB', 'OS LAB', 'MAT', 'OOPS', 'DT', 'SE', 'OS'],
   ),
   TimeTableSlot(
     day: 'Friday',
-    periods: ['FCP', 'FCP', 'ICO', 'FWA', 'FWA', 'IPS', 'ICO', 'FCP'],
+    periods: ['MAT', 'OOPS', 'SE', 'MAT', 'DT LAB', 'DT LAB', 'OS', 'DT'],
   ),
   TimeTableSlot(
     day: 'Saturday',
-    periods: ['ICO', 'IPS', 'FWA', 'FWA', 'ICO', 'IPS', 'FCP', 'FCP'],
+    periods: ['OOPS', 'LIB', 'OOPS LAB', 'OOPS LAB', 'MAT', 'OS', 'SE', 'DT'],
   ),
 ];
+
+// Helper to look up staff by subject abbreviation
+FacultyMember? getFacultyForSubject(String subjectAbb) {
+  final abb = subjectAbb.trim().toUpperCase();
+  if (abb.contains('OOPS')) {
+    return kOfficialMcaFaculty[0]; // Mrs. V. Nandhini
+  } else if (abb == 'MAT') {
+    return kOfficialMcaFaculty[1]; // Dr. S. Sivaramakrishnan
+  } else if (abb.contains('DT')) {
+    return kOfficialMcaFaculty[2]; // Mrs. K. Shivashankari
+  } else if (abb.contains('OS')) {
+    return kOfficialMcaFaculty[3]; // Ms. M. Tamilmani
+  } else if (abb == 'SE') {
+    return kOfficialMcaFaculty[4]; // Ms. V. Deepa
+  }
+  return null;
+}
+
+// Return the 1st period subject and faculty for any date
+Map<String, dynamic> getFirstPeriodDetailsForDate([DateTime? date]) {
+  final d = date ?? DateTime.now();
+  final dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  final dayName = dayNames[d.weekday - 1];
+
+  final slot = kMcaTimeTable.firstWhere(
+    (s) => s.day.toLowerCase() == dayName.toLowerCase(),
+    orElse: () => kMcaTimeTable.first,
+  );
+
+  final subjectAbb = slot.periods.first;
+  final faculty = getFacultyForSubject(subjectAbb);
+
+  return {
+    'day': slot.day,
+    'period': 1,
+    'time': '8:50 AM - 9:40 AM',
+    'subjectAbb': subjectAbb,
+    'faculty': faculty,
+    'facultyName': faculty?.name ?? 'Assigned Faculty',
+    'advisorName': 'Mrs. V. Nandhini, AP/CA',
+  };
+}

@@ -79,7 +79,9 @@ class AppHeader extends StatelessWidget {
                       child: Text(
                         state.currentUser.role == UserRole.admin
                             ? 'HOD'
-                            : state.currentUser.role.name.toUpperCase(),
+                            : (state.currentUser.role == UserRole.staff
+                                ? 'FACULTY'
+                                : state.currentUser.role.name.toUpperCase()),
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -179,19 +181,25 @@ class AppHeader extends StatelessWidget {
               },
             ),
 
-            // Profile Avatar / Role Switcher button
+            // Profile Avatar / Role Switcher button (kept in Settings for students)
             GestureDetector(
-              onTap: () => RoleSwitcherSheet.show(context, state),
+              onTap: state.currentRole == UserRole.student
+                  ? null
+                  : () => RoleSwitcherSheet.show(context, state),
               child: Container(
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.primary, width: 2),
                 ),
-                child: const CircleAvatar(
+                child: CircleAvatar(
                   radius: 14,
                   backgroundColor: AppColors.background,
-                  child: Icon(Icons.person, size: 18, color: AppColors.primary),
+                  child: Icon(
+                    state.currentRole == UserRole.student ? Icons.school : Icons.person,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ),

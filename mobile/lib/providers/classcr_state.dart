@@ -98,10 +98,12 @@ class ClassCRState extends ChangeNotifier {
       UserRole role = UserRole.cr;
       if (roleStr == 'assistantCr') role = UserRole.assistantCr;
       if (roleStr == 'advisor') role = UserRole.advisor;
+      if (roleStr == 'staff') role = UserRole.staff;
       if (roleStr == 'student') role = UserRole.student;
       if (roleStr == 'admin') role = UserRole.admin;
 
       final gender = prefs.getString('classcr_user_gender');
+      final subject = prefs.getString('classcr_user_subject');
 
       _currentUser = AppUser(
         id: 'user_${role.name}',
@@ -112,6 +114,7 @@ class ClassCRState extends ChangeNotifier {
         studentId: studentId,
         department: 'MCA',
         gender: gender,
+        subject: subject,
       );
     }
 
@@ -293,6 +296,10 @@ class ClassCRState extends ChangeNotifier {
       if (entered == _delegation.advisorCode || entered == 'ADV2026' || entered == 'NAVI2026') {
         return {'valid': true, 'role': 'advisor', 'name': _delegation.advisorName, 'classId': classId};
       }
+    } else if (role == UserRole.staff) {
+      if (entered == 'STAFF2026' || entered == 'ADV2026' || entered == 'TEACH2026' || entered == 'NAVI2026') {
+        return {'valid': true, 'role': 'staff', 'name': 'Subject Teacher / Faculty', 'classId': classId};
+      }
     } else if (role == UserRole.cr) {
       if (entered == _delegation.crCode || entered == 'CR2026') {
         return {'valid': true, 'role': 'cr', 'name': _delegation.crName, 'rollNo': _delegation.crRoll, 'classId': classId, 'gender': 'M'};
@@ -418,6 +425,19 @@ class ClassCRState extends ChangeNotifier {
     final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
     _absentRolls.addAll(rolls);
     notifyListeners();
+  }
+
+  // Merge Boys & Girls Assistant CR records into consolidated class attendance
+  Future<bool> mergeAndSubmitSectionAttendance({
+    Set<int>? additionalAbsentees,
+    String? mergeNotes,
+  }) async {
+    if (additionalAbsentees != null) {
+      _absentRolls.addAll(additionalAbsentees);
+    }
+    _crNotes = mergeNotes ?? 'Merged Assistant CR (Boys & Girls) attendance verified and submitted.';
+    notifyListeners();
+    return await submitAttendance();
   }
 
   // Quick Mark Actions
@@ -614,7 +634,7 @@ class ClassCRState extends ChangeNotifier {
   }
 
   // Switch role for full interactive demo
-  void switchRole(UserRole newRole) {
+  void switchRole(UserRole newRole, {String? customName, String? customSubject}) async {
     switch (newRole) {
       case UserRole.cr:
         _currentUser = const AppUser(
@@ -640,13 +660,25 @@ class ClassCRState extends ChangeNotifier {
         );
         break;
       case UserRole.advisor:
-        _currentUser = const AppUser(
+        _currentUser = AppUser(
           id: 'user_adv_1',
-          name: 'Dr. K. Senthil Nathan',
+          name: customName ?? 'Mrs. V. Nandhini, AP/CA',
           email: 'advisor@classcr.edu',
           role: UserRole.advisor,
           classId: 'I-MCA-A',
           department: 'MCA',
+          subject: 'Object oriented Programming in C++ (OOPS) & Lab',
+        );
+        break;
+      case UserRole.staff:
+        _currentUser = AppUser(
+          id: 'user_staff_1',
+          name: customName ?? 'Ms. M. Tamilmani, AP/CA',
+          email: 'staff@classcr.edu',
+          role: UserRole.staff,
+          classId: 'I-MCA-A',
+          department: 'MCA',
+          subject: customSubject ?? 'Operating Systems (OS) & Lab',
         );
         break;
       case UserRole.student:
@@ -670,11 +702,26 @@ class ClassCRState extends ChangeNotifier {
         );
         break;
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('classcr_setup_done', true);
+    await prefs.setString('classcr_user_role', newRole.name);
+    await prefs.setString('classcr_user_name', _currentUser.name);
+    await prefs.setString('classcr_class_id', _currentUser.classId ?? 'I-MCA-A');
+    if (_currentUser.studentId != null) {
+      await prefs.setString('classcr_student_id', _currentUser.studentId!);
+    }
+    if (_currentUser.gender != null) {
+      await prefs.setString('classcr_user_gender', _currentUser.gender!);
+    }
+    if (_currentUser.subject != null) {
+      await prefs.setString('classcr_user_subject', _currentUser.subject!);
+    }
     notifyListeners();
   }
 
   // Switch specifically to Male or Female Assistant CR
-  void switchAssistantCrRole({required bool isFemale}) {
+  void switchAssistantCrRole({required bool isFemale}) async {
     if (isFemale) {
       _currentUser = const AppUser(
         id: 'user_acr_f',
@@ -698,6 +745,16 @@ class ClassCRState extends ChangeNotifier {
         gender: 'M',
       );
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('classcr_setup_done', true);
+    await prefs.setString('classcr_user_role', UserRole.assistantCr.name);
+    await prefs.setString('classcr_user_name', _currentUser.name);
+    await prefs.setString('classcr_class_id', 'I-MCA-A');
+    if (_currentUser.studentId != null) {
+      await prefs.setString('classcr_student_id', _currentUser.studentId!);
+    }
+    await prefs.setString('classcr_user_gender', isFemale ? 'F' : 'M');
     notifyListeners();
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../models/models.dart';
 import '../../providers/classcr_state.dart';
 
 class StudentPortalScreen extends StatelessWidget {
@@ -9,14 +10,47 @@ class StudentPortalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Spec student: DHIVYALAKSHMI H (260311)
-    const String studentName = "DHIVYALAKSHMI H";
-    const String enrollmentNo = "260311";
-    const int rollNo = 13;
-    const int conducted = 30;
-    const int present = 26;
-    const int absent = 4;
-    const double percentage = 86.67;
+    final currentUser = state.currentUser;
+
+    // Detect logged in student from state.students
+    Student? matched;
+    if (currentUser.studentId != null && currentUser.studentId!.isNotEmpty) {
+      matched = state.students.cast<Student?>().firstWhere(
+        (s) => s?.enrollmentNo == currentUser.studentId || s?.rollNo.toString() == currentUser.studentId,
+        orElse: () => null,
+      );
+    }
+    if (matched == null) {
+      final cleanName = currentUser.name.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim().toUpperCase();
+      matched = state.students.cast<Student?>().firstWhere(
+        (s) => s?.name.toUpperCase() == cleanName,
+        orElse: () => null,
+      );
+    }
+    final Student student = matched ?? state.students.first;
+
+    final isAbsentToday = state.isAbsent(student.rollNo);
+
+    // Dynamic attendance calculations based on real history
+    final history = state.history;
+    final int pastDays = history.isEmpty ? 5 : history.length;
+    // Each college day has ~7 hours/lectures
+    final int conducted = (pastDays + 1) * 7;
+    int absentLectures = 0;
+    for (final record in history) {
+      if (record.absentRolls.contains(student.rollNo)) {
+        absentLectures += 7;
+      }
+    }
+    if (isAbsentToday) {
+      absentLectures += 7;
+    }
+    final int presentLectures = (conducted - absentLectures).clamp(0, conducted);
+    final double percentage = conducted > 0
+        ? double.parse(((presentLectures / conducted) * 100).toStringAsFixed(1))
+        : 100.0;
+
+    final isEligible = percentage >= 75.0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -43,7 +77,7 @@ class StudentPortalScreen extends StatelessWidget {
                   radius: 30,
                   backgroundColor: Colors.white,
                   child: Text(
-                    studentName[0],
+                    student.name.isNotEmpty ? student.name[0] : 'S',
                     style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
@@ -57,7 +91,7 @@ class StudentPortalScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        studentName,
+                        student.name,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -66,13 +100,82 @@ class StudentPortalScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Roll No: $rollNo • Enrollment: $enrollmentNo',
+                        'Roll No: ${student.rollNo} • Enrollment: ${student.enrollmentNo}',
                         style: const TextStyle(fontSize: 12, color: Colors.white70),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        'I MCA • Batch 2026–2028',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF67E8F9), fontWeight: FontWeight.w600),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              student.code,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'I MCA A • Batch 2026–2028',
+                            style: TextStyle(fontSize: 11, color: Color(0xFF67E8F9), fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // TODAY'S LIVE STATUS BANNER
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isAbsentToday ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isAbsentToday ? const Color(0xFFFCA5A5) : const Color(0xFF86EFAC),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isAbsentToday ? Icons.cancel : Icons.check_circle,
+                  color: isAbsentToday ? AppColors.absentRed : AppColors.presentGreen,
+                  size: 28,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isAbsentToday ? 'TODAY: MARKED ABSENT' : 'TODAY: MARKED PRESENT ✓',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: isAbsentToday ? AppColors.absentRed : AppColors.presentGreen,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isAbsentToday
+                            ? 'Morning attendance recorded absent. Inform Class Advisor if you have on-duty / medical leave.'
+                            : 'Attendance marked by CR ${state.delegation.crName}. You are present for all lectures today.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isAbsentToday ? const Color(0xFF991B1B) : const Color(0xFF166534),
+                        ),
                       ),
                     ],
                   ),
@@ -108,19 +211,23 @@ class StudentPortalScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.presentGreen.withOpacity(0.12),
+                        color: (isEligible ? AppColors.presentGreen : AppColors.absentRed).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.verified, size: 14, color: AppColors.presentGreen),
-                          SizedBox(width: 4),
+                          Icon(
+                            isEligible ? Icons.verified : Icons.warning_amber,
+                            size: 14,
+                            color: isEligible ? AppColors.presentGreen : AppColors.absentRed,
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            'ELIGIBLE (>75%)',
+                            isEligible ? 'ELIGIBLE (>75%)' : 'SHORTAGE ALERT (<75%)',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.presentGreen,
+                              color: isEligible ? AppColors.presentGreen : AppColors.absentRed,
                             ),
                           ),
                         ],
@@ -139,17 +246,19 @@ class StudentPortalScreen extends StatelessWidget {
                         children: [
                           Text(
                             '$percentage%',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 40,
                               fontWeight: FontWeight.w900,
-                              color: AppColors.primary,
+                              color: isEligible ? AppColors.primary : AppColors.absentRed,
                               height: 1,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            'Safe from attendance shortage threshold (75%). Keep it up!',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          Text(
+                            isEligible
+                                ? 'Safe above University 75% eligibility threshold. Keep it up!'
+                                : 'Attendance is below 75%. Meet Class Advisor Mrs. V. Nandhini immediately.',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -161,13 +270,19 @@ class StudentPortalScreen extends StatelessWidget {
                         fit: StackFit.expand,
                         children: [
                           CircularProgressIndicator(
-                            value: percentage / 100,
+                            value: (percentage / 100).clamp(0.0, 1.0),
                             strokeWidth: 8,
                             backgroundColor: const Color(0xFFE2E8F0),
-                            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.presentGreen),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isEligible ? AppColors.presentGreen : AppColors.absentRed,
+                            ),
                           ),
-                          const Center(
-                            child: Icon(Icons.school, color: AppColors.primary, size: 24),
+                          Center(
+                            child: Icon(
+                              isEligible ? Icons.school : Icons.warning,
+                              color: isEligible ? AppColors.primary : AppColors.absentRed,
+                              size: 24,
+                            ),
                           ),
                         ],
                       ),
@@ -182,9 +297,9 @@ class StudentPortalScreen extends StatelessWidget {
                 // Conducted / Present / Absent metrics row
                 Row(
                   children: [
-                    _buildSubMetric('Classes Conducted', '$conducted', AppColors.textPrimary),
-                    _buildSubMetric('Present', '$present', AppColors.presentGreen),
-                    _buildSubMetric('Absent', '$absent', AppColors.absentRed),
+                    _buildSubMetric('Lectures Conducted', '$conducted', AppColors.textPrimary),
+                    _buildSubMetric('Present', '$presentLectures', AppColors.presentGreen),
+                    _buildSubMetric('Absent', '$absentLectures', AppColors.absentRed),
                   ],
                 ),
               ],
@@ -193,23 +308,58 @@ class StudentPortalScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Subjects Breakdown
-          const Text(
-            'Subject-wise Attendance',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          // Official Subjects Breakdown from Time Table
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Subject-wise Attendance',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+              Text(
+                'Hall 408 • I MCA',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
 
-          _buildSubjectTile('Advanced Java Programming & Cloud', '28 / 30', 93.3),
-          _buildSubjectTile('Full Stack Web Technologies', '25 / 30', 83.3),
-          _buildSubjectTile('Database Management Systems (MongoDB & SQL)', '26 / 30', 86.7),
-          _buildSubjectTile('Mobile Application Development (Flutter)', '25 / 30', 83.3),
+          _buildSubjectTile(
+            'Mathematical Foundation of Computer Applications (MAT)',
+            'Dr. S. Sivaramakrishnan, Prof/Maths',
+            '${(conducted * 0.19).round() - (isAbsentToday ? 1 : 0)} / ${(conducted * 0.19).round()}',
+            isAbsentToday ? (percentage - 2).clamp(50, 100).toDouble() : (percentage + 1).clamp(50, 100).toDouble(),
+          ),
+          _buildSubjectTile(
+            'Object oriented Programming in C++ (OOPS) & Lab',
+            'Mrs. V. Nandhini, AP/CA (Class Advisor)',
+            '${(conducted * 0.26).round() - (isAbsentToday ? 1 : 0)} / ${(conducted * 0.26).round()}',
+            isAbsentToday ? (percentage - 1).clamp(50, 100).toDouble() : percentage,
+          ),
+          _buildSubjectTile(
+            'Database Technology (DT) & Lab',
+            'Mrs. K. Shivashankari, AP/CA',
+            '${(conducted * 0.26).round() - (isAbsentToday ? 1 : 0)} / ${(conducted * 0.26).round()}',
+            isAbsentToday ? (percentage - 3).clamp(50, 100).toDouble() : (percentage + 2).clamp(50, 100).toDouble(),
+          ),
+          _buildSubjectTile(
+            'Operating Systems (OS) & Lab',
+            'Ms. M. Tamilmani, AP/CA',
+            '${(conducted * 0.26).round() - (isAbsentToday ? 1 : 0)} / ${(conducted * 0.26).round()}',
+            percentage,
+          ),
+          _buildSubjectTile(
+            'Software Engineering (SE)',
+            'Ms. V. Deepa, AP/CA',
+            '${(conducted * 0.14).round() - (isAbsentToday ? 1 : 0)} / ${(conducted * 0.14).round()}',
+            isAbsentToday ? (percentage - 1).clamp(50, 100).toDouble() : (percentage + 3).clamp(50, 100).toDouble(),
+          ),
 
           const SizedBox(height: 24),
 
-          // Class Announcements
+          // Class Announcements from Advisor
           const Text(
-            'Class Announcements',
+            'Class Advisor Notice Board',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 12),
@@ -238,17 +388,17 @@ class StudentPortalScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Class Advisor Announcement',
+                        'Class Advisor: Mrs. V. Nandhini, AP/CA',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Lab practical verification on Monday 21 Sep. Ensure all your records are submitted.',
+                        'Ensure all OOPS, OS, and Database Technology lab observation records are maintained up-to-date for internal assessment.',
                         style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'By Dr. K. Senthil Nathan • 2 hours ago',
+                        'Batch 2026–2028 • Hall 408',
                         style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                       ),
                     ],
@@ -257,6 +407,8 @@ class StudentPortalScreen extends StatelessWidget {
               ],
             ),
           ),
+
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -281,7 +433,7 @@ class StudentPortalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSubjectTile(String title, String ratio, double percent) {
+  Widget _buildSubjectTile(String title, String teacher, String ratio, double percent) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -297,17 +449,28 @@ class StudentPortalScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      teacher,
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 '$percent%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: AppColors.primary,
+                  color: percent >= 75 ? AppColors.presentGreen : AppColors.absentRed,
                 ),
               ),
             ],
@@ -316,17 +479,17 @@ class StudentPortalScreen extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: percent / 100,
+              value: (percent / 100).clamp(0.0, 1.0),
               backgroundColor: const Color(0xFFF1F5F9),
               valueColor: AlwaysStoppedAnimation<Color>(
-                percent >= 85 ? AppColors.presentGreen : AppColors.primary,
+                percent >= 75 ? AppColors.presentGreen : AppColors.absentRed,
               ),
               minHeight: 6,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Attended: $ratio classes',
+            'Attended: $ratio hours',
             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
         ],

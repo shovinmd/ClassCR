@@ -2,6 +2,7 @@ enum UserRole {
   cr,
   assistantCr,
   advisor,
+  staff,
   student,
   admin,
 }
@@ -15,6 +16,7 @@ class AppUser {
   final String? studentId;
   final String? department;
   final String? gender; // 'M' or 'F'
+  final String? subject;
 
   const AppUser({
     required this.id,
@@ -25,6 +27,7 @@ class AppUser {
     this.studentId,
     this.department,
     this.gender,
+    this.subject,
   });
 
   String get roleDisplayName {
@@ -36,6 +39,8 @@ class AppUser {
         return '${prefix}Assistant CR (Asst. CR)';
       case UserRole.advisor:
         return 'Class Advisor';
+      case UserRole.staff:
+        return 'Subject Teacher / Faculty';
       case UserRole.student:
         return 'Student';
       case UserRole.admin:

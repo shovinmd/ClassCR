@@ -18,47 +18,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String _selectedYear = 'I MCA';
   String _selectedSection = 'I MCA A';
 
-  late final TextEditingController _advisorNameCtrl;
-  late final TextEditingController _advisorCodeCtrl;
-  bool _isSavingAdvisor = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _advisorNameCtrl = TextEditingController(text: widget.state.delegation.advisorName);
-    _advisorCodeCtrl = TextEditingController(text: widget.state.delegation.advisorCode);
-  }
-
-  @override
-  void dispose() {
-    _advisorNameCtrl.dispose();
-    _advisorCodeCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveAdvisorAppointment() async {
-    setState(() => _isSavingAdvisor = true);
-    final name = _advisorNameCtrl.text.trim();
-    final code = _advisorCodeCtrl.text.trim().toUpperCase();
-
-    await widget.state.adminAssignAdvisor(
-      classId: 'I-MCA-A',
-      advisorName: name.isNotEmpty ? name : 'Prof. Nandhini G (Navi Ma\'am)',
-      advisorCode: code.isNotEmpty ? code : 'NAVI2026',
-    );
-
-    setState(() => _isSavingAdvisor = false);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Appointed $name as Advisor for I MCA! Passcode: $code'),
-          backgroundColor: AppColors.presentGreen,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -327,7 +286,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           const SizedBox(height: 20),
 
-          // APPOINT CLASS ADVISOR & ASSIGN PASSCODE (Admin authority)
+          // SECTION FACULTY & SUBJECT DETAILS (HOD Academic Oversight)
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -336,7 +295,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               border: Border.all(color: const Color(0xFFC7D2FE), width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+                  color: const Color(0xFF6366F1).withOpacity(0.08),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -353,7 +312,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         color: const Color(0xFFEEF2FF),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.badge, color: Color(0xFF4F46E5), size: 20),
+                      child: const Icon(Icons.school, color: Color(0xFF4F46E5), size: 20),
                     ),
                     const SizedBox(width: 10),
                     const Expanded(
@@ -361,11 +320,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Appoint Class Advisor & Set Passcode',
+                            'Section Faculty & Subject Overview',
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.deepBlue),
                           ),
                           Text(
-                            'HOD sets advisor name and access passcode for I MCA',
+                            'I MCA A • Official MVIT Faculty & Subject Lecture Details',
                             style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                           ),
                         ],
@@ -373,184 +332,137 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
+
+                // Assigned Class Advisor Banner
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Color(0xFF2563EB),
+                        child: Icon(Icons.psychology, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Class Advisor: Mrs. V. Nandhini, AP/CA',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E40AF)),
+                            ),
+                            Text(
+                              'Hall 408 • OOPS & Lab (11 Hrs) • Access Code: NAVI2026 / ADV2026',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF1E3A8A)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.presentGreen.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Active ✓',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
                 const Text(
-                  'Select from MCA Department Faculty (MVIT):',
+                  'Section Subject Teachers & Lecture Attendance:',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: kOfficialMcaFaculty.any((f) => f.name == _advisorNameCtrl.text)
-                          ? _advisorNameCtrl.text
-                          : kOfficialMcaFaculty.first.name,
-                      items: kOfficialMcaFaculty.map((f) {
-                        return DropdownMenuItem<String>(
-                          value: f.name,
-                          child: Text(
-                            '${f.name} • ${f.subject ?? f.role}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            _advisorNameCtrl.text = val;
-                            if (val.contains('Nandhini')) {
-                              _advisorCodeCtrl.text = 'NAVI2026';
-                            }
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _advisorNameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Class Advisor Name',
-                    hintText: 'e.g. Mrs. V. Nandhini, AP/CA',
-                    prefixIcon: Icon(Icons.psychology, color: Color(0xFF4F46E5)),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _advisorCodeCtrl,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: const InputDecoration(
-                    labelText: 'Advisor Access Passcode',
-                    hintText: 'e.g. NAVI2026',
-                    prefixIcon: Icon(Icons.key, color: Color(0xFF4F46E5)),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isSavingAdvisor ? null : _saveAdvisorAppointment,
-                    icon: _isSavingAdvisor
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.check_circle_outline),
-                    label: Text(_isSavingAdvisor ? 'Updating...' : 'Assign Advisor & Save Passcode'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+                const SizedBox(height: 8),
 
-          const SizedBox(height: 20),
-
-          // MCA FACULTY & SUBJECT TEACHERS DIRECTORY (MVIT Official)
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.cardBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.school, color: AppColors.primary, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'MCA Department Faculty Directory',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Manakula Vinayagar Institute of Technology • Batch 2026–2028',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 14),
-                ...kOfficialMcaFaculty.map((fac) {
-                  final isAdvisor = fac.role == 'Class Advisor';
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isAdvisor ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isAdvisor ? const Color(0xFFC7D2FE) : const Color(0xFFE2E8F0),
+                // List of official faculty members
+                Column(
+                  children: kOfficialMcaFaculty.map((f) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.cardBorder),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: isAdvisor ? const Color(0xFF4F46E5) : const Color(0xFF64748B),
-                          child: Text(
-                            fac.name.split(' ').length > 1 ? fac.name.split(' ')[1][0] : 'T',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEEF2FF),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Text(
+                                f.subjectAbb ?? 'FAC',
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Color(0xFF4F46E5)),
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  f.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${f.subject ?? f.role} (${f.subjectCode ?? ""}) • ${f.hours ?? 7} Hrs/Wk',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                fac.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                '${widget.state.presentCount}/52',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.presentGreen),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                fac.subject != null ? '${fac.subject} (${fac.subjectCode ?? ""})' : fac.role,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isAdvisor ? const Color(0xFF4F46E5) : AppColors.textSecondary,
-                                  fontWeight: isAdvisor ? FontWeight.bold : FontWeight.normal,
-                                ),
+                              const Text(
+                                'Recorded',
+                                style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
                               ),
                             ],
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isAdvisor ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            isAdvisor ? 'Advisor' : 'Subject Staff',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: isAdvisor ? Colors.white : const Color(0xFF475569),
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 10),
+                const Row(
+                  children: [
+                    Icon(Icons.verified, size: 14, color: AppColors.presentGreen),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'All faculty and advisors have pre-configured secure login. No manual code creation needed.',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
                     ),
-                  );
-                }),
+                  ],
+                ),
               ],
             ),
           ),

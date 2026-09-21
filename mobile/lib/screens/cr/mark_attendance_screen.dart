@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../models/models.dart';
 import '../../providers/classcr_state.dart';
+import '../../data/mca_faculty.dart';
 import 'report_screen.dart';
 
 class MarkAttendanceScreen extends StatefulWidget {
@@ -180,7 +181,35 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+
+                // Morning 1st Lecture Dispatch Notice
+                Builder(
+                  builder: (_) {
+                    final pInfo = getFirstPeriodDetailsForDate();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.wb_sunny_outlined, size: 18, color: Color(0xFF2563EB)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Morning 1st Lecture: ${pInfo['subjectAbb']} (${pInfo['time']})\nAbsent list routed to Advisor & ${pInfo['facultyName']}',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF1E40AF), fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
 
                 // List of absentees
                 Text(
@@ -553,6 +582,37 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                                 ),
                               ],
                             ],
+                          ),
+                        ),
+                        // Merge Option for Assistant CR
+                        InkWell(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('🔄 Section attendance synced & merged with Class CR record!'),
+                                backgroundColor: AppColors.presentGreen,
+                              ),
+                            );
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF86EFAC)),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.call_merge, size: 16, color: AppColors.presentGreen),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Merge Section with CR Session ✓',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],

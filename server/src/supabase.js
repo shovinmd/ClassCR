@@ -148,9 +148,9 @@ const memoryStore = {
       notes: 'Full day classes.'
     },
     {
-      id: 'att_20260918',
+      id: `att_${new Date().toISOString().split('T')[0].replace(/-/g, '')}`,
       classId: 'I-MCA-A',
-      date: '2026-09-18',
+      date: new Date().toISOString().split('T')[0],
       totalStudents: 52,
       presentCount: 43,
       absentCount: 9,
@@ -161,15 +161,15 @@ const memoryStore = {
       isLocked: true,
       lastModifiedBy: '',
       status: 'submitted',
-      submittedAt: '2026-09-18T09:18:00Z',
+      submittedAt: '09:18 AM',
       notes: 'Morning session attendance verified and submitted to advisor.'
     }
   ],
   reports: [
     {
-      id: 'rep_20260918',
+      id: `rep_${new Date().toISOString().split('T')[0].replace(/-/g, '')}`,
       classId: 'I-MCA-A',
-      date: '18/09/2026',
+      date: `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`,
       totalStudents: 52,
       presentCount: 43,
       absentCount: 9,
@@ -443,11 +443,11 @@ const db = {
 
   // Official MCA Department Faculty List (Manakula Vinayagar Institute of Technology)
   facultyList: [
-    { name: 'Mrs. V. Nandhini, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Class Advisor', hallNo: '408' },
-    { name: 'Ms. M. Tamilmani, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Fundamentals of Computer Programming (FCP)', code: '25PMCY01', hours: 15 },
-    { name: 'Ms. V. Deepa, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Introduction to Problem Solving (IPS)', code: '25PMCY02', hours: 15 },
-    { name: 'Ms. M. Shakira Banu, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Introduction to Computer Organization (ICO)', code: '25PMCY03', hours: 15 },
-    { name: 'Ms. S. Sharleen Banou, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Fundamentals of Web Applications (FWA)', code: '25PMCY04', hours: 15 }
+    { name: 'Mrs. V. Nandhini, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Class Advisor', subject: 'Object oriented Programming in C++ (OOPS) & Lab', code: '25PMCT12 / 25PMCP11', hallNo: '408', hours: 11 },
+    { name: 'Dr. S. Sivaramakrishnan, Prof/Maths', designation: 'Professor / Maths', department: 'Mathematics', role: 'Faculty', subject: 'Mathematical Foundation of Computer Applications (MAT)', code: '25PMCT11', hallNo: '408', hours: 8 },
+    { name: 'Mrs. K. Shivashankari, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Database Technology (DT) & Lab', code: '25PMCT13 / 25PMCP12', hallNo: '408', hours: 11 },
+    { name: 'Ms. M. Tamilmani, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Operating Systems (OS) & Lab', code: '25PMCT14 / 25PMCP13', hallNo: '408', hours: 11 },
+    { name: 'Ms. V. Deepa, AP/CA', designation: 'Assistant Professor / CA', department: 'MCA', role: 'Faculty', subject: 'Software Engineering (SE)', code: '25PMCT15', hallNo: '408', hours: 6 }
   ],
 
   async getFaculty(department = 'MCA') {
@@ -566,6 +566,16 @@ const db = {
           valid: true,
           name: del.advisorName,
           role: 'advisor',
+          classId
+        };
+      }
+    } else if (role === 'staff') {
+      const match = entered === 'STAFF2026' || entered === 'ADV2026' || entered === 'NAVI2026' || entered === 'TEACH2026';
+      if (match) {
+        return {
+          valid: true,
+          name: 'Subject Teacher / Faculty',
+          role: 'staff',
           classId
         };
       }
