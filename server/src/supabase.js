@@ -663,40 +663,42 @@ const db = {
       }
 
       return { valid: false, error: 'Invalid Assistant CR passcode. Please check with your Class Advisor.' };
-    }
- else if (role === 'student') {
-      const isClassCode = entered === del.studentCode || entered === 'STU2026' || entered === '123456';
-
-      let matched = null;
-      if (rollNo) {
-        matched = fallbackStudents.find(s => s.rollNo === Number(rollNo));
+    } else if (role === 'student') {
+      if (!rollNo) {
+        return { valid: false, error: 'Please select your student name from the roster first.' };
       }
 
-      const isCcrMatch = matched && (
+      const matched = fallbackStudents.find(s => s.rollNo === Number(rollNo));
+      if (!matched) {
+        return { valid: false, error: 'Selected student not found in roster.' };
+      }
+
+      const isCcrMatch = (
         entered === (matched.ccrCode || '').toUpperCase() ||
-        entered === `CCR-${String(matched.rollNo).padStart(4, '0')}`
+        entered === `CCR-${String(matched.rollNo).padStart(4, '0')}` ||
+        entered === String(matched.enrollmentNo).toUpperCase()
       );
 
-      if (!matched && entered.startsWith('CCR-')) {
-        matched = fallbackStudents.find(s =>
-          (s.ccrCode || '').toUpperCase() === entered ||
-          `CCR-${String(s.rollNo).padStart(4, '0')}` === entered
-        );
-      }
-
-      if (isClassCode || isCcrMatch || (matched && entered.startsWith('CCR-'))) {
+      if (isCcrMatch) {
         return {
           valid: true,
           role: 'student',
-          name: matched ? matched.name : 'Student',
-          rollNo: matched ? matched.rollNo : rollNo,
-          enrollmentNo: matched ? matched.enrollmentNo : null,
-          gender: matched ? matched.gender : (gender || 'M'),
-          ccrCode: matched ? matched.ccrCode : entered,
+          name: matched.name,
+          rollNo: matched.rollNo,
+          enrollmentNo: matched.enrollmentNo,
+          studentId: matched.enrollmentNo,
+          gender: matched.gender || (gender || 'M'),
+          ccrCode: matched.ccrCode || `CCR-${String(matched.rollNo).padStart(4, '0')}`,
           classId
+        };
+      } else {
+        return {
+          valid: false,
+          error: `Code mismatch: The entered code does not match ${matched.name}. Please enter your assigned ClassCR code (${matched.ccrCode || 'CCR-' + String(matched.rollNo).padStart(4, '0')}).`
         };
       }
     }
+
 
     return { valid: false, error: 'Invalid verification passcode for this role' };
   }

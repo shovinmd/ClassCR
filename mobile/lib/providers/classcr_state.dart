@@ -486,42 +486,45 @@ class ClassCRState extends ChangeNotifier {
         'error': 'Invalid Assistant CR passcode. Please check with your Class Advisor.',
       };
     } else if (role == UserRole.student) {
-      if (entered == _delegation.studentCode || entered == 'STU2026' || entered == '123456') {
-        return {'valid': true, 'role': 'student', 'classId': classId};
+      if (rollNo == null) {
+        return {
+          'valid': false,
+          'error': 'Please select your student name from the roster first.',
+        };
       }
-      // Check individual student ClassCR code
-      if (rollNo != null) {
-        final expectedCode = 'CCR-${rollNo.toString().padLeft(4, '0')}';
-        if (entered == expectedCode) {
-          final studentList = _students;
-          final student = studentList.cast<Student?>().firstWhere(
-                (s) => s?.rollNo == rollNo,
-                orElse: () => null,
-              );
-          return {
-            'valid': true,
-            'role': 'student',
-            'classId': classId,
-            'name': student?.name ?? '',
-            'rollNo': rollNo,
-            'code': entered,
-          };
-        }
+
+      final student = _students.cast<Student?>().firstWhere(
+            (s) => s?.rollNo == rollNo,
+            orElse: () => null,
+          );
+
+      if (student == null) {
+        return {
+          'valid': false,
+          'error': 'Selected student not found in roster.',
+        };
+      }
+
+      final expectedCode = student.code.toUpperCase();
+      final expectedEnrollment = student.enrollmentNo.toUpperCase();
+      final expectedCcr = 'CCR-${student.rollNo.toString().padLeft(4, '0')}';
+
+      if (entered == expectedCode || entered == expectedEnrollment || entered == expectedCcr) {
+        return {
+          'valid': true,
+          'role': 'student',
+          'classId': classId,
+          'name': student.name,
+          'rollNo': student.rollNo,
+          'studentId': student.enrollmentNo,
+          'code': student.code,
+          'gender': student.isFemale ? 'F' : 'M',
+        };
       } else {
-        final match = _students.cast<Student?>().firstWhere(
-              (s) => s != null && s.code.toUpperCase() == entered,
-              orElse: () => null,
-            );
-        if (match != null) {
-          return {
-            'valid': true,
-            'role': 'student',
-            'classId': classId,
-            'name': match.name,
-            'rollNo': match.rollNo,
-            'code': entered,
-          };
-        }
+        return {
+          'valid': false,
+          'error': 'Code mismatch: The entered code does not match ${student.name}. Please enter your assigned ClassCR code (${student.code}) to verify.',
+        };
       }
     }
 
@@ -584,24 +587,8 @@ class ClassCRState extends ChangeNotifier {
       }
     }
 
-    // Note: CR and Assistant CR cannot be auto-granted via universal code alone.
-    // They strictly require advisor appointment and student identity verification from the roster.
+    // Note: CR, Assistant CR, and Student logins require student identity verification from the roster.
 
-
-    // 6. Generic Student Passcodes
-    if (code == 'STU2026' || code == '123456' || code == _delegation.studentCode.toUpperCase()) {
-      final firstSt = _students.isNotEmpty ? _students.first : null;
-      return {
-        'valid': true,
-        'role': UserRole.student,
-        'name': firstSt?.name ?? 'Student',
-        'studentId': firstSt?.enrollmentNo ?? '260192',
-        'student': firstSt,
-        'classId': 'I-MCA-A',
-        'gender': firstSt?.isFemale == true ? 'F' : 'M',
-        'title': 'Student • ${firstSt?.name ?? "I MCA"}',
-      };
-    }
 
     // 7. Individual Student Code Check (e.g. CCR-0001 to CCR-0052, or enrollment number, or roll number)
     final matchedStudent = _students.cast<Student?>().firstWhere(

@@ -64,8 +64,8 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
-    // 1. For CR and Assistant CR: STRICT APPOINTMENT & STUDENT IDENTITY VERIFICATION
-    if (_selectedRole == UserRole.cr || _selectedRole == UserRole.assistantCr) {
+    // 1. For CR, Assistant CR, and Student: STRICT APPOINTMENT & STUDENT IDENTITY VERIFICATION
+    if (_selectedRole == UserRole.cr || _selectedRole == UserRole.assistantCr || _selectedRole == UserRole.student) {
       if (_selectedStudent == null) {
         setState(() {
           _errorMessage = 'Please select your name from the class roster first';
@@ -94,7 +94,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
       final roleSuffix = _selectedRole == UserRole.cr
           ? ' (CR)'
-          : ' (Asst. CR)';
+          : (_selectedRole == UserRole.assistantCr ? ' (Asst. CR)' : '');
       final userName = '${_selectedStudent!.name}$roleSuffix';
       final studentId = _selectedStudent!.enrollmentNo;
       final classId = '$_selectedClass-$_selectedSection';
@@ -684,15 +684,25 @@ class _SetupScreenState extends State<SetupScreen> {
                             ),
                           ],
                         ] else ...[
-                          Row(
-                            children: [
-                              const Icon(Icons.check_circle, color: AppColors.presentGreen, size: 16),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Verified in I MCA Batch 2026–28 roster (${_selectedStudent!.isFemale ? "Girl" : "Boy"})',
-                                style: const TextStyle(fontSize: 12, color: AppColors.presentGreen, fontWeight: FontWeight.w600),
-                              ),
-                            ],
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.school, color: Color(0xFF2563EB), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Selected: #${_selectedStudent!.rollNo.toString().padLeft(2, '0')} ${_selectedStudent!.name}\nNow enter this student\'s matching ClassCR code in Step 4 below to log in.',
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF1D4ED8), fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ],
@@ -724,10 +734,14 @@ class _SetupScreenState extends State<SetupScreen> {
                       obscureText: _selectedRole == UserRole.student ? false : _obscurePasscode,
                       decoration: InputDecoration(
                         labelText: _selectedRole == UserRole.student
-                            ? 'ClassCR Code (e.g. CCR-0001 or STU2026)'
+                            ? (_selectedStudent != null
+                                ? 'Matching ClassCR Code for ${_selectedStudent!.name}'
+                                : 'Select student name above first')
                             : 'Passcode for ${_getRoleTitle(_selectedRole)}',
                         hintText: _selectedRole == UserRole.student
-                            ? 'Enter individual CCR code (e.g. CCR-0001)'
+                            ? (_selectedStudent != null
+                                ? 'Enter assigned code (e.g. ${_selectedStudent!.code} or ${_selectedStudent!.enrollmentNo})'
+                                : 'Choose your name from roster above first')
                             : 'Enter authorized passcode',
                         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
                         suffixIcon: _selectedRole == UserRole.student

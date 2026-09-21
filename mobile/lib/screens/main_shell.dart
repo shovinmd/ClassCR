@@ -47,11 +47,6 @@ class _MainShellState extends State<MainShell> {
               label: 'My Attendance',
             ),
             NavigationDestination(
-              icon: Icon(Icons.description_outlined),
-              selectedIcon: Icon(Icons.description, color: AppColors.primary),
-              label: 'Class Report',
-            ),
-            NavigationDestination(
               icon: Icon(Icons.settings_outlined),
               selectedIcon: Icon(Icons.settings, color: AppColors.primary),
               label: 'Settings',
@@ -61,12 +56,11 @@ class _MainShellState extends State<MainShell> {
           final safeIndex = _currentIndex.clamp(0, destinations.length - 1);
           if (safeIndex == 0) {
             contentWidget = StudentPortalScreen(state: widget.state);
-          } else if (safeIndex == 1) {
-            contentWidget = ReportScreen(state: widget.state);
           } else {
             contentWidget = _buildSettingsView();
           }
-        } else if (role == UserRole.admin) {
+        }
+ else if (role == UserRole.admin) {
           destinations = const [
             NavigationDestination(
               icon: Icon(Icons.admin_panel_settings_outlined),
