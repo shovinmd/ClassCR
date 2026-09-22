@@ -22,6 +22,8 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedPeriod = widget.state.viewingPeriodNo;
+    widget.state.switchToPeriod(_selectedPeriod);
     final isAsstCr = widget.state.currentRole == UserRole.assistantCr;
     final asstGender = widget.state.currentUser.gender;
     if (isAsstCr) {
@@ -257,6 +259,7 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
                   );
 
                   if (mounted) {
+                    setState(() {});
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         backgroundColor: AppColors.presentGreen,
@@ -358,13 +361,19 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
                       final pNum = idx + 1;
                       final pSubj = slot.periods[idx];
                       final isSelected = _selectedPeriod == pNum;
+                      final isLocked = widget.state.isPeriodLocked(pNum);
                       return GestureDetector(
-                        onTap: () => setState(() => _selectedPeriod = pNum),
+                        onTap: () {
+                          widget.state.switchToPeriod(pNum);
+                          setState(() => _selectedPeriod = pNum);
+                        },
                         child: Container(
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF0D9488) : const Color(0xFFF1F5F9),
+                            color: isSelected
+                                ? const Color(0xFF0D9488)
+                                : (isLocked ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9)),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: isSelected ? const Color(0xFF0D9488) : AppColors.cardBorder,
@@ -372,6 +381,10 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
                           ),
                           child: Row(
                             children: [
+                              if (isLocked) ...[
+                                Icon(Icons.lock, size: 12, color: isSelected ? Colors.white : AppColors.absentRed),
+                                const SizedBox(width: 4),
+                              ],
                               Text(
                                 'P$pNum: $pSubj',
                                 style: TextStyle(
@@ -546,6 +559,33 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
             ),
           ),
 
+          if (widget.state.isPeriodLocked(_selectedPeriod))
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock, color: AppColors.absentRed, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Period $_selectedPeriod attendance is locked & saved. Cannot be modified.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF991B1B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Student Roster
           Expanded(
             child: ListView.builder(
@@ -607,10 +647,12 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
                       value: !isAbsent,
                       activeColor: AppColors.presentGreen,
                       inactiveTrackColor: const Color(0xFFFCA5A5),
-                      onChanged: (_) {
-                        widget.state.toggleStatus(student.rollNo);
-                        setState(() {});
-                      },
+                      onChanged: (widget.state.isPeriodLocked(_selectedPeriod) || !widget.state.canModifyAttendance)
+                          ? null
+                          : (_) {
+                              widget.state.toggleStatus(student.rollNo);
+                              setState(() {});
+                            },
                     ),
                   ),
                 );
@@ -628,11 +670,23 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _showConfirmAndDispatchDialog(faculty, currentSubj),
-                icon: const Icon(Icons.verified_user),
-                label: Text('Review All 52 Students & Dispatch to ${faculty.name.split(',')[0]}'),
+                onPressed: (widget.state.isPeriodLocked(_selectedPeriod) && ackStatus != 'rejected')
+                    ? null
+                    : () => _showConfirmAndDispatchDialog(faculty, currentSubj),
+                icon: Icon(
+                  widget.state.isPeriodLocked(_selectedPeriod) && ackStatus != 'rejected'
+                      ? Icons.lock
+                      : Icons.verified_user,
+                ),
+                label: Text(
+                  widget.state.isPeriodLocked(_selectedPeriod) && ackStatus != 'rejected'
+                      ? 'Period $_selectedPeriod Attendance Dispatched & Locked'
+                      : 'Review All 52 Students & Dispatch to ${faculty.name.split(',')[0]}',
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D9488),
+                  backgroundColor: widget.state.isPeriodLocked(_selectedPeriod) && ackStatus != 'rejected'
+                      ? Colors.grey.shade400
+                      : const Color(0xFF0D9488),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),

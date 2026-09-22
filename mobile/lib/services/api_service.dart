@@ -172,7 +172,7 @@ class ApiService {
 
       final response = await http
           .post(
-            Uri.parse('$supabaseUrl/rest/v1/attendance_records'),
+            Uri.parse('$supabaseUrl/rest/v1/attendance_records?on_conflict=id'),
             headers: {
               ..._supabaseHeaders,
               'Prefer': 'resolution=merge-duplicates,return=representation',

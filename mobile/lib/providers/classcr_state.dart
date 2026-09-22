@@ -80,26 +80,37 @@ class ClassCRState extends ChangeNotifier {
 
   /// Switch the viewed/active period and load its attendance state
   void switchToPeriod(int periodNo) {
-    if (_viewingPeriodNo == periodNo) return;
-    // Cache draft for current period if not yet locked
-    if (!isAttendanceLocked && _rawCurrentAttendanceRecord == null) {
-      _periodRecords[_viewingPeriodNo] = AttendanceRecord(
-        id: 'att_${_todayDate.replaceAll('-', '')}_P$_viewingPeriodNo',
-        classId: _currentUser.classId ?? 'I-MCA-A',
-        date: _todayDate,
-        totalStudents: totalCount,
-        presentCount: presentCount,
-        absentCount: absentCount,
-        absentRolls: _absentRolls.toList()..sort(),
-        markedByName: _currentUser.name,
-        markedByRole: _currentUser.roleDisplayName,
-        isLocked: false,
-        status: 'draft',
-        isSynced: false,
-        notes: _crNotes,
-        periodNo: _viewingPeriodNo,
-        periodSubject: getPeriodSubject(_viewingPeriodNo),
-      );
+    if (_viewingPeriodNo == periodNo) {
+      final rec = _periodRecords[periodNo];
+      if (rec != null && _absentRolls.isEmpty && rec.absentRolls.isNotEmpty) {
+        _absentRolls.addAll(rec.absentRolls);
+      }
+      return;
+    }
+    // Cache draft for current period if not yet locked and has marked absentees
+    if (!isAttendanceLocked && (_rawCurrentAttendanceRecord == null || !_rawCurrentAttendanceRecord!.isLocked)) {
+      if (_absentRolls.isNotEmpty) {
+        _periodRecords[_viewingPeriodNo] = AttendanceRecord(
+          id: 'att_${_todayDate.replaceAll('-', '')}_P$_viewingPeriodNo',
+          classId: _currentUser.classId ?? 'I-MCA-A',
+          date: _todayDate,
+          totalStudents: totalCount,
+          presentCount: presentCount,
+          absentCount: absentCount,
+          absentRolls: _absentRolls.toList()..sort(),
+          markedByName: _currentUser.name,
+          markedByRole: _currentUser.roleDisplayName,
+          isLocked: false,
+          status: 'draft',
+          isSynced: false,
+          notes: _crNotes,
+          periodNo: _viewingPeriodNo,
+          periodSubject: getPeriodSubject(_viewingPeriodNo),
+        );
+      } else {
+        // If all present and not locked, do not leave stale ghost draft
+        _periodRecords.remove(_viewingPeriodNo);
+      }
     }
     _viewingPeriodNo = periodNo;
     final rec = _periodRecords[periodNo];
@@ -117,7 +128,7 @@ class ClassCRState extends ChangeNotifier {
   // Only the specific period whose attendance record is submitted with isLocked is locked.
   // Unmarked periods and other periods remain unlocked.
   bool get isAttendanceLocked {
-    final rec = _rawCurrentAttendanceRecord;
+    final rec = _periodRecords[_viewingPeriodNo] ?? _rawCurrentAttendanceRecord;
     return rec != null && rec.isLocked;
   }
 
@@ -909,7 +920,6 @@ class ClassCRState extends ChangeNotifier {
     final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
     _absentRolls.removeAll(rolls);
     notifyListeners();
-    autoSaveRealtimeDraft();
   }
 
   void markSectionAbsent({required bool isFemale}) {
@@ -917,7 +927,6 @@ class ClassCRState extends ChangeNotifier {
     final rolls = _students.where((s) => s.isFemale == isFemale).map((s) => s.rollNo).toSet();
     _absentRolls.addAll(rolls);
     notifyListeners();
-    autoSaveRealtimeDraft();
   }
 
   // ─── Real-time synchronization ───────────────────────────────────────────
@@ -977,7 +986,13 @@ class ClassCRState extends ChangeNotifier {
         date: _todayDate,
       );
       if (allPeriods.isNotEmpty) {
-        _periodRecords = allPeriods;
+        for (final entry in allPeriods.entries) {
+          if (entry.value.isLocked) {
+            _periodRecords[entry.key] = entry.value;
+          } else if (!_periodRecords.containsKey(entry.key)) {
+            _periodRecords[entry.key] = entry.value;
+          }
+        }
       }
       final remote = allPeriods[_viewingPeriodNo] ?? await ApiService.fetchTodayAttendance(
         classId: _currentUser.classId ?? 'I-MCA-A',
@@ -985,14 +1000,16 @@ class ClassCRState extends ChangeNotifier {
         periodNo: _viewingPeriodNo,
       );
       if (remote != null) {
-        final remoteSet = remote.absentRolls.toSet();
-        final hasChanged = _currentAttendanceRecord?.isLocked != remote.isLocked ||
-            _currentAttendanceRecord?.asstCrVerified != remote.asstCrVerified ||
-            _currentAttendanceRecord?.absentRolls.length != remote.absentRolls.length ||
-            !_absentRolls.containsAll(remoteSet) ||
-            !remoteSet.containsAll(_absentRolls);
-
-        if (hasChanged) {
+        // If remote record is locked, always reflect the locked state
+        if (remote.isLocked) {
+          _currentAttendanceRecord = remote;
+          _periodRecords[_viewingPeriodNo] = remote;
+          _absentRolls.clear();
+          _absentRolls.addAll(remote.absentRolls);
+          if (remote.notes != null) _crNotes = remote.notes;
+          notifyListeners();
+        } else if (_rawCurrentAttendanceRecord == null && _absentRolls.isEmpty) {
+          // If local has no active modifications, load remote draft
           _currentAttendanceRecord = remote;
           _absentRolls.clear();
           _absentRolls.addAll(remote.absentRolls);
@@ -1005,28 +1022,9 @@ class ClassCRState extends ChangeNotifier {
 
   // ─── Offline-first draft helpers ─────────────────────────────────────────
 
-  /// Always persist current absent rolls locally (SharedPreferences).
-  /// Instant real-time background save of marks directly to Supabase.
+  /// Real-time draft helper (kept safe without spamming network writes on every UI tap)
   Future<void> autoSaveRealtimeDraft() async {
-    if (isAttendanceLocked) return;
-    try {
-      await ApiService.submitAttendance(
-        classId: _currentUser.classId ?? 'I-MCA-A',
-        date: _todayDate,
-        absentRolls: _absentRolls.toList()..sort(),
-        notes: _crNotes,
-        userRole: _currentUser.role.name,
-        userName: _currentUser.name,
-        markedByName: _currentAttendanceRecord?.markedByName ?? _currentUser.name,
-        markedByRole: _currentAttendanceRecord?.markedByRole ?? _currentUser.roleDisplayName,
-        isLocked: false,
-        asstCrVerified: isSectionVerifiedByAsstCr,
-        asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
-        asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
-        periodNo: _viewingPeriodNo,
-        periodSubject: getPeriodSubject(_viewingPeriodNo),
-      );
-    } catch (_) {}
+    // Deliberately empty: attendance is dispatched directly when user reviews and submits.
   }
 
   // Assistant CR completes verification of assigned section and transmits to CR
@@ -1107,7 +1105,6 @@ class ClassCRState extends ChangeNotifier {
       _absentRolls.add(rollNo);
     }
     notifyListeners();
-    autoSaveRealtimeDraft();
     return true;
   }
 
@@ -1115,7 +1112,6 @@ class ClassCRState extends ChangeNotifier {
     if (!canModifyAttendance) return false;
     _absentRolls.clear();
     notifyListeners();
-    autoSaveRealtimeDraft();
     return true;
   }
 
@@ -1123,7 +1119,6 @@ class ClassCRState extends ChangeNotifier {
     if (!canModifyAttendance) return false;
     _absentRolls.addAll(_students.map((s) => s.rollNo));
     notifyListeners();
-    autoSaveRealtimeDraft();
     return true;
   }
 
@@ -1473,25 +1468,30 @@ class ClassCRState extends ChangeNotifier {
 
   // Generate Smart Report formatted text
   String generateSmartReportText() {
-    final sortedAbsentees = _absentRolls.toList()..sort();
-    final author = _currentAttendanceRecord?.markedByName ?? _currentUser.name;
-    final authorRole = _currentAttendanceRecord?.markedByRole ?? _currentUser.roleDisplayName;
+    // Period 1 is the official daily class attendance record
+    final primaryRecord = _periodRecords[1] ?? _rawCurrentAttendanceRecord;
+    final sortedAbsentees = (primaryRecord != null ? primaryRecord.absentRolls : _absentRolls.toList())..sort();
+    final pTotal = primaryRecord?.totalStudents ?? totalCount;
+    final pAbsent = sortedAbsentees.length;
+    final pPresent = pTotal - pAbsent;
+    final author = primaryRecord?.markedByName ?? _currentUser.name;
+    final authorRole = primaryRecord?.markedByRole ?? _currentUser.roleDisplayName;
     final advisor = _delegation.advisorName;
 
     final buffer = StringBuffer();
-    buffer.writeln("Attendance Report");
+    buffer.writeln("Attendance Report (Period 1 - Official Class Record)");
     buffer.writeln("I MCA A — MVIT");
     buffer.writeln("Date: ${_formatDateForReport(_todayDate)}");
     buffer.writeln("Marked By: $author ($authorRole)");
-    if (_currentAttendanceRecord?.lastModifiedBy != null && _currentAttendanceRecord!.lastModifiedBy!.isNotEmpty) {
-      buffer.writeln("Advisor Approval: ${_currentAttendanceRecord!.lastModifiedBy}");
+    if (primaryRecord?.lastModifiedBy != null && primaryRecord!.lastModifiedBy!.isNotEmpty) {
+      buffer.writeln("Advisor Approval: ${primaryRecord.lastModifiedBy}");
     } else {
       buffer.writeln("Verified by Class Advisor: $advisor");
     }
     buffer.writeln();
-    buffer.writeln("Total Students: $totalCount");
-    buffer.writeln("Present: $presentCount");
-    buffer.writeln("Absent: $absentCount");
+    buffer.writeln("Total Students: $pTotal");
+    buffer.writeln("Present: $pPresent");
+    buffer.writeln("Absent: $pAbsent");
     buffer.writeln();
     buffer.writeln("Absent Students:");
     buffer.writeln();
