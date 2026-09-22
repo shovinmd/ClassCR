@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -115,18 +114,17 @@ class ClassCRState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Time-based lock: period is locked if its end time has passed OR record.isLocked
+  // Only the specific period whose attendance record is submitted with isLocked is locked.
+  // Unmarked periods and other periods remain unlocked.
   bool get isAttendanceLocked {
     final rec = _rawCurrentAttendanceRecord;
-    if (rec != null && rec.isLocked) return true;
-    return isPeriodTimeLocked(_viewingPeriodNo);
+    return rec != null && rec.isLocked;
   }
 
   // Check if a specific period is locked
   bool isPeriodLocked(int periodNo) {
     final rec = _periodRecords[periodNo];
-    if (rec != null && rec.isLocked) return true;
-    return isPeriodTimeLocked(periodNo);
+    return rec != null && rec.isLocked;
   }
 
   // Assistant CR Verification Status (for viewed period)
@@ -238,6 +236,13 @@ class ClassCRState extends ChangeNotifier {
   }
 
   Future<void> _checkBackendAndLoad() async {
+    // Clean any legacy local drafts/queues from preferences so all data comes purely from Supabase
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('classcr_local_draft');
+      await prefs.remove('classcr_offline_queue');
+    } catch (_) {}
+
     final available = await ApiService.isBackendAvailable();
     _isOnline = available;
     if (available) {
@@ -254,38 +259,23 @@ class ClassCRState extends ChangeNotifier {
         _history = remoteHistory;
       }
       final allPeriods = await ApiService.fetchAllPeriodsAttendance(classId: 'I-MCA-A', date: _todayDate);
-      if (allPeriods.isNotEmpty) {
-        _periodRecords = allPeriods;
-      }
-      final remoteToday = allPeriods[_viewingPeriodNo] ?? await ApiService.fetchTodayAttendance(classId: 'I-MCA-A', date: _todayDate, periodNo: _viewingPeriodNo);
+      _periodRecords = allPeriods;
+      final remoteToday = allPeriods[_viewingPeriodNo];
       if (remoteToday != null) {
         _currentAttendanceRecord = remoteToday;
         _absentRolls.clear();
         _absentRolls.addAll(remoteToday.absentRolls);
         _crNotes = remoteToday.notes;
       } else {
-        // Try to restore a local draft saved while offline
-        await _restoreLocalDraftIfAny();
-        if (_currentAttendanceRecord == null) {
-          await _loadAttendanceForDate(_todayDate);
-        }
-      }
-      // Push any queued offline records now that we're back online
-      final queue = await ApiService.loadOfflineQueue();
-      if (queue.isNotEmpty) {
-        await syncPendingRecords();
+        _currentAttendanceRecord = null;
+        _absentRolls.clear();
+        _crNotes = 'Daily attendance session verified and submitted to advisor.';
       }
     } else {
-      // Offline — restore whatever was saved locally
-      await _restoreLocalDraftIfAny();
-      if (_currentAttendanceRecord == null) {
-        await _loadAttendanceForDate(_todayDate);
-      }
-      // Start watching for connectivity to return
+      await _loadAttendanceForDate(_todayDate);
       _startConnectivityWatcher();
     }
-    final queue = await ApiService.loadOfflineQueue();
-    _pendingSyncCount = queue.length;
+    _pendingSyncCount = 0;
     notifyListeners();
   }
 
@@ -298,17 +288,7 @@ class ClassCRState extends ChangeNotifier {
   }
 
   Future<void> _loadAttendanceForDate(String date) async {
-    // 1. Check in local history for this date and period
-    final existing = _history.where((r) => r.date == date && (r.periodNo == _viewingPeriodNo || r.id == 'att_${date.replaceAll('-', '')}_P$_viewingPeriodNo')).toList();
-    if (existing.isNotEmpty) {
-      _currentAttendanceRecord = existing.first;
-      _absentRolls.clear();
-      _absentRolls.addAll(_currentAttendanceRecord!.absentRolls);
-      _crNotes = _currentAttendanceRecord!.notes;
-      return;
-    }
-
-    // 2. Check remote backend if online
+    // 1. Check remote backend if online
     if (_isOnline) {
       final allPeriods = await ApiService.fetchAllPeriodsAttendance(classId: _currentUser.classId ?? 'I-MCA-A', date: date);
       if (allPeriods.isNotEmpty) {
@@ -322,6 +302,16 @@ class ClassCRState extends ChangeNotifier {
         _crNotes = remote.notes;
         return;
       }
+    }
+
+    // 2. Check in local history for this date and period
+    final existing = _history.where((r) => r.date == date && (r.periodNo == _viewingPeriodNo || r.id == 'att_${date.replaceAll('-', '')}_P$_viewingPeriodNo')).toList();
+    if (existing.isNotEmpty) {
+      _currentAttendanceRecord = existing.first;
+      _absentRolls.clear();
+      _absentRolls.addAll(_currentAttendanceRecord!.absentRolls);
+      _crNotes = _currentAttendanceRecord!.notes;
+      return;
     }
 
     // 3. Fresh unsubmitted date
@@ -942,9 +932,7 @@ class ClassCRState extends ChangeNotifier {
         _connectivityTimer?.cancel();
         _connectivityTimer = null;
         notifyListeners();
-        // Push local draft & queued records now that we're back
-        await _pushLocalDraftIfAny();
-        await syncPendingRecords();
+        await fetchRealtimeAttendance();
       }
     });
   }
@@ -986,131 +974,27 @@ class ClassCRState extends ChangeNotifier {
   // ─── Offline-first draft helpers ─────────────────────────────────────────
 
   /// Always persist current absent rolls locally (SharedPreferences).
-  Future<void> _saveLocalDraft() async {
+  /// Instant real-time background save of marks directly to Supabase.
+  Future<void> autoSaveRealtimeDraft() async {
+    if (isAttendanceLocked) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final draft = json.encode({
-        'date': _todayDate,
-        'absentRolls': _absentRolls.toList(),
-        'notes': _crNotes,
-        'markedByName': _currentUser.name,
-        'markedByRole': _currentUser.roleDisplayName,
-      });
-      await prefs.setString('classcr_local_draft', draft);
-    } catch (_) {}
-  }
-
-  /// Restore a local draft saved while offline, for today's date.
-  Future<void> _restoreLocalDraftIfAny() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString('classcr_local_draft');
-      if (raw == null) return;
-      final data = json.decode(raw) as Map<String, dynamic>;
-      if (data['date'] != _todayDate) return; // Draft is for a different day
-      final rolls = (data['absentRolls'] as List).cast<int>();
-      _absentRolls.clear();
-      _absentRolls.addAll(rolls);
-      _crNotes = data['notes'] as String? ?? _crNotes;
-      // Build a local record so the UI shows the saved state
-      _currentAttendanceRecord = AttendanceRecord(
-        id: 'local_draft_$_todayDate',
-        classId: _currentUser.classId ?? 'I-MCA-A',
-        date: _todayDate,
-        totalStudents: totalCount,
-        presentCount: presentCount,
-        absentCount: absentCount,
-        absentRolls: rolls,
-        markedByName: data['markedByName'] as String? ?? _currentUser.name,
-        markedByRole: data['markedByRole'] as String? ?? _currentUser.roleDisplayName,
-        isLocked: false,
-        status: 'draft',
-        isSynced: false,
-        notes: _crNotes,
-      );
-    } catch (_) {}
-  }
-
-  /// When connectivity returns, push the saved local draft to the server.
-  Future<void> _pushLocalDraftIfAny() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString('classcr_local_draft');
-      if (raw == null) return;
-      final data = json.decode(raw) as Map<String, dynamic>;
-      if (data['date'] != _todayDate) return;
-      final rolls = (data['absentRolls'] as List).cast<int>();
       await ApiService.submitAttendance(
         classId: _currentUser.classId ?? 'I-MCA-A',
         date: _todayDate,
-        absentRolls: rolls,
-        notes: data['notes'] as String?,
+        absentRolls: _absentRolls.toList()..sort(),
+        notes: _crNotes,
         userRole: _currentUser.role.name,
         userName: _currentUser.name,
-        markedByName: data['markedByName'] as String?,
-        markedByRole: data['markedByRole'] as String?,
+        markedByName: _currentAttendanceRecord?.markedByName ?? _currentUser.name,
+        markedByRole: _currentAttendanceRecord?.markedByRole ?? _currentUser.roleDisplayName,
         isLocked: false,
+        asstCrVerified: isSectionVerifiedByAsstCr,
+        asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
+        asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
+        periodNo: _viewingPeriodNo,
+        periodSubject: getPeriodSubject(_viewingPeriodNo),
       );
-      await prefs.remove('classcr_local_draft');
     } catch (_) {}
-  }
-
-  /// Instant real-time background save of marks.
-  /// Online → push to server; Offline → save locally and queue.
-  Future<void> autoSaveRealtimeDraft() async {
-    if (isAttendanceLocked) return;
-    // Always save locally first (offline safety net)
-    await _saveLocalDraft();
-    if (_isOnline) {
-      try {
-        await ApiService.submitAttendance(
-          classId: _currentUser.classId ?? 'I-MCA-A',
-          date: _todayDate,
-          absentRolls: _absentRolls.toList()..sort(),
-          notes: _crNotes,
-          userRole: _currentUser.role.name,
-          userName: _currentUser.name,
-          markedByName: _currentAttendanceRecord?.markedByName ?? _currentUser.name,
-          markedByRole: _currentAttendanceRecord?.markedByRole ?? _currentUser.roleDisplayName,
-          isLocked: false,
-          asstCrVerified: isSectionVerifiedByAsstCr,
-          asstCrVerifiedBy: _currentAttendanceRecord?.asstCrVerifiedBy,
-          asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
-          periodNo: _viewingPeriodNo,
-          periodSubject: getPeriodSubject(_viewingPeriodNo),
-        );
-      } catch (_) {
-        // Push to offline queue if the live call fails
-        _isOnline = false;
-        _startConnectivityWatcher();
-        notifyListeners();
-        await _queueCurrentDraft();
-      }
-    } else {
-      // Queue for upload when network returns
-      await _queueCurrentDraft();
-    }
-  }
-
-  Future<void> _queueCurrentDraft() async {
-    final draft = AttendanceRecord(
-      id: 'att_${_todayDate.replaceAll('-', '')}_P$_viewingPeriodNo',
-      classId: _currentUser.classId ?? 'I-MCA-A',
-      date: _todayDate,
-      totalStudents: totalCount,
-      presentCount: presentCount,
-      absentCount: absentCount,
-      absentRolls: _absentRolls.toList()..sort(),
-      markedByName: _currentUser.name,
-      markedByRole: _currentUser.roleDisplayName,
-      isLocked: false,
-      status: 'draft',
-      isSynced: false,
-      notes: _crNotes,
-      periodNo: _viewingPeriodNo,
-      periodSubject: getPeriodSubject(_viewingPeriodNo),
-    );
-    await _queueRecord(draft);
   }
 
   // Assistant CR completes verification of assigned section and transmits to CR
@@ -1263,30 +1147,24 @@ class ClassCRState extends ChangeNotifier {
       _history.insert(0, record);
     }
 
-    if (_isOnline) {
-      final success = await ApiService.submitAttendance(
-        classId: record.classId,
-        date: record.date,
-        absentRolls: record.absentRolls,
-        notes: record.notes,
-        userRole: _currentUser.role.name,
-        userName: _currentUser.name,
-        markedByName: authorName,
-        markedByRole: authorRole,
-        isLocked: isLocked,
-        lastModifiedBy: record.lastModifiedBy,
-        asstCrVerified: record.asstCrVerified,
-        asstCrVerifiedBy: record.asstCrVerifiedBy,
-        asstCrVerifiedAt: record.asstCrVerifiedAt,
-        periodNo: record.periodNo,
-        periodSubject: record.periodSubject,
-      );
-      if (!success) {
-        await _queueRecord(record);
-      }
-    } else {
-      await _queueRecord(record);
-    }
+
+    await ApiService.submitAttendance(
+      classId: record.classId,
+      date: record.date,
+      absentRolls: record.absentRolls,
+      notes: record.notes,
+      userRole: _currentUser.role.name,
+      userName: _currentUser.name,
+      markedByName: authorName,
+      markedByRole: authorRole,
+      isLocked: isLocked,
+      lastModifiedBy: record.lastModifiedBy,
+      asstCrVerified: record.asstCrVerified,
+      asstCrVerifiedBy: record.asstCrVerifiedBy,
+      asstCrVerifiedAt: record.asstCrVerifiedAt,
+      periodNo: record.periodNo,
+      periodSubject: record.periodSubject,
+    );
 
     notifyListeners();
     return true;
@@ -1332,30 +1210,23 @@ class ClassCRState extends ChangeNotifier {
       _history.insert(0, record);
     }
 
-    if (_isOnline) {
-      final success = await ApiService.submitAttendance(
-        classId: record.classId,
-        date: record.date,
-        absentRolls: record.absentRolls,
-        notes: record.notes,
-        userRole: 'advisor',
-        userName: advisorName,
-        markedByName: record.markedByName,
-        markedByRole: record.markedByRole,
-        isLocked: true,
-        lastModifiedBy: advisorName,
-        asstCrVerified: record.asstCrVerified,
-        asstCrVerifiedBy: record.asstCrVerifiedBy,
-        asstCrVerifiedAt: record.asstCrVerifiedAt,
-        periodNo: record.periodNo,
-        periodSubject: record.periodSubject,
-      );
-      if (!success) {
-        await _queueRecord(record);
-      }
-    } else {
-      await _queueRecord(record);
-    }
+    await ApiService.submitAttendance(
+      classId: record.classId,
+      date: record.date,
+      absentRolls: record.absentRolls,
+      notes: record.notes,
+      userRole: 'advisor',
+      userName: advisorName,
+      markedByName: record.markedByName,
+      markedByRole: record.markedByRole,
+      isLocked: true,
+      lastModifiedBy: advisorName,
+      asstCrVerified: record.asstCrVerified,
+      asstCrVerifiedBy: record.asstCrVerifiedBy,
+      asstCrVerifiedAt: record.asstCrVerifiedAt,
+      periodNo: record.periodNo,
+      periodSubject: record.periodSubject,
+    );
 
     notifyListeners();
     return true;
@@ -1413,77 +1284,21 @@ class ClassCRState extends ChangeNotifier {
     }
   }
 
-  Future<void> _queueRecord(AttendanceRecord record) async {
-    final queue = await ApiService.loadOfflineQueue();
-    queue.removeWhere((r) => r.date == record.date && (r.periodNo == record.periodNo || r.id == record.id));
-    queue.add(record.copyWith(isSynced: false));
-    await ApiService.saveOfflineQueue(queue);
-    _pendingSyncCount = queue.length;
-    notifyListeners();
-  }
-
   Future<void> syncPendingRecords() async {
     if (_isSyncing) return;
     _isSyncing = true;
     notifyListeners();
 
-    final queue = await ApiService.loadOfflineQueue();
-    if (queue.isEmpty) {
-      // Nothing queued but check for a local draft
-      await _pushLocalDraftIfAny();
-      _isSyncing = false;
-      notifyListeners();
-      return;
-    }
+    await fetchRealtimeAttendance();
 
-    bool allSuccess = true;
-    for (final rec in queue) {
-      final success = await ApiService.submitAttendance(
-        classId: rec.classId,
-        date: rec.date,
-        absentRolls: rec.absentRolls,
-        notes: rec.notes,
-        userRole: rec.markedByRole?.toLowerCase() ?? 'cr',
-        userName: rec.markedByName,
-        markedByName: rec.markedByName,
-        markedByRole: rec.markedByRole,
-        isLocked: rec.isLocked,
-        asstCrVerified: rec.asstCrVerified,
-        asstCrVerifiedBy: rec.asstCrVerifiedBy,
-        asstCrVerifiedAt: rec.asstCrVerifiedAt,
-        periodNo: rec.periodNo,
-        periodSubject: rec.periodSubject,
-      );
-      if (!success) {
-        allSuccess = false;
-        break;
-      }
-    }
-
-    if (allSuccess) {
-      // Clear both the queue and the local draft — server has everything
-      await ApiService.clearOfflineQueue();
-      _pendingSyncCount = 0;
-      _isOnline = true;
-      // Show "Synced ✅" banner for 3 seconds
-      _justSynced = true;
+    _pendingSyncCount = 0;
+    _isOnline = true;
+    _justSynced = true;
+    notifyListeners();
+    Future.delayed(const Duration(seconds: 3), () {
+      _justSynced = false;
       notifyListeners();
-      Future.delayed(const Duration(seconds: 3), () {
-        _justSynced = false;
-        notifyListeners();
-      });
-      // Reload fresh server data
-      final remoteToday = await ApiService.fetchTodayAttendance(
-        classId: _currentUser.classId ?? 'I-MCA-A',
-        date: _todayDate,
-      );
-      if (remoteToday != null) {
-        _currentAttendanceRecord = remoteToday;
-        _absentRolls.clear();
-        _absentRolls.addAll(remoteToday.absentRolls);
-        _crNotes = remoteToday.notes;
-      }
-    }
+    });
 
     _isSyncing = false;
     notifyListeners();

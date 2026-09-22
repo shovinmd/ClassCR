@@ -86,19 +86,28 @@ class Student {
   };
 
   factory Student.fromJson(Map<String, dynamic> json) {
-    final roll = json['rollNo'] is int ? json['rollNo'] : int.tryParse(json['rollNo']?.toString() ?? '0') ?? 0;
+    final roll = json['rollNo'] is int
+        ? json['rollNo']
+        : json['roll_no'] is int
+            ? json['roll_no']
+            : int.tryParse((json['rollNo'] ?? json['roll_no'])?.toString() ?? '0') ?? 0;
+    final enrollment = (json['enrollmentNo'] ?? json['enrollment_no'])?.toString() ?? '';
+    final name = json['name']?.toString() ?? '';
+    final dob = json['dob']?.toString();
     final inferredGender = json['gender']?.toString() ?? (femaleRollNumbers.contains(roll) ? 'F' : 'M');
     final code = json['ccrCode']?.toString() ?? json['ccr_code']?.toString() ?? 'CCR-${roll.toString().padLeft(4, '0')}';
+    final classId = (json['classId'] ?? json['class_id'])?.toString() ?? 'I-MCA-A';
+    final department = json['department']?.toString() ?? 'MCA';
 
     return Student(
       rollNo: roll,
-      enrollmentNo: json['enrollmentNo'].toString(),
-      name: json['name'].toString(),
-      dob: json['dob']?.toString(),
+      enrollmentNo: enrollment,
+      name: name,
+      dob: dob,
       gender: inferredGender,
       ccrCode: code,
-      classId: json['classId']?.toString() ?? 'I-MCA-A',
-      department: json['department']?.toString() ?? 'MCA',
+      classId: classId,
+      department: department,
     );
   }
 
@@ -233,31 +242,44 @@ class AttendanceRecord {
   }
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
+    final rawRolls = json['absentRolls'] ?? json['absent_rolls'];
+    List<int> parsedRolls = [];
+    if (rawRolls is List) {
+      parsedRolls = rawRolls.map((e) => int.tryParse(e.toString()) ?? 0).where((r) => r > 0).toList();
+    }
+
+    final rawLocked = json['isLocked'] ?? json['is_locked'];
+    final bool isLocked = rawLocked == true || rawLocked == 1 || rawLocked == 'true';
+
     return AttendanceRecord(
-      id: json['id'] ?? 'att_${json['date']}',
-      classId: json['classId'] ?? 'I-MCA-A',
-      date: json['date'] ?? '',
-      totalStudents: json['totalStudents'] ?? 52,
-      presentCount: json['presentCount'] ?? 52,
-      absentCount: json['absentCount'] ?? 0,
-      absentRolls: (json['absentRolls'] as List<dynamic>?)?.map((e) => e as int).toList() ?? [],
-      status: json['status'] ?? 'submitted',
-      submittedAt: json['submittedAt'],
-      notes: json['notes'],
-      isSynced: json['isSynced'] ?? true,
-      markedByName: json['markedByName'],
-      markedByRole: json['markedByRole'],
-      isLocked: json['isLocked'] == true || json['status'] == 'submitted',
-      lastModifiedBy: json['lastModifiedBy'],
-      asstCrVerified: json['asstCrVerified'] == true,
-      asstCrVerifiedBy: json['asstCrVerifiedBy']?.toString(),
-      asstCrVerifiedAt: json['asstCrVerifiedAt']?.toString(),
-      periodNo: json['periodNo'] is int ? json['periodNo'] : int.tryParse(json['periodNo']?.toString() ?? ''),
-      periodSubject: json['periodSubject']?.toString(),
-      facultyAcknowledgmentStatus: json['facultyAcknowledgmentStatus']?.toString() ?? 'pending',
-      facultyRejectionReason: json['facultyRejectionReason']?.toString(),
-      facultyAcknowledgedBy: json['facultyAcknowledgedBy']?.toString(),
-      facultyAcknowledgedAt: json['facultyAcknowledgedAt']?.toString(),
+      id: json['id']?.toString() ?? 'att_${json['date']}',
+      classId: (json['classId'] ?? json['class_id'])?.toString() ?? 'I-MCA-A',
+      date: json['date']?.toString() ?? '',
+      totalStudents: json['totalStudents'] ?? json['total_students'] ?? 52,
+      presentCount: json['presentCount'] ?? json['present_count'] ?? 52,
+      absentCount: json['absentCount'] ?? json['absent_count'] ?? 0,
+      absentRolls: parsedRolls,
+      status: json['status']?.toString() ?? 'submitted',
+      submittedAt: (json['submittedAt'] ?? json['submitted_at'])?.toString(),
+      notes: json['notes']?.toString(),
+      isSynced: true,
+      markedByName: (json['markedByName'] ?? json['marked_by_name'])?.toString(),
+      markedByRole: (json['markedByRole'] ?? json['marked_by_role'])?.toString(),
+      isLocked: isLocked,
+      lastModifiedBy: (json['lastModifiedBy'] ?? json['last_modified_by'])?.toString(),
+      asstCrVerified: json['asstCrVerified'] == true || json['asst_cr_verified'] == true,
+      asstCrVerifiedBy: (json['asstCrVerifiedBy'] ?? json['asst_cr_verified_by'])?.toString(),
+      asstCrVerifiedAt: (json['asstCrVerifiedAt'] ?? json['asst_cr_verified_at'])?.toString(),
+      periodNo: json['periodNo'] is int
+          ? json['periodNo']
+          : json['period_no'] is int
+              ? json['period_no']
+              : int.tryParse((json['periodNo'] ?? json['period_no'])?.toString() ?? ''),
+      periodSubject: (json['periodSubject'] ?? json['period_subject'])?.toString(),
+      facultyAcknowledgmentStatus: (json['facultyAcknowledgmentStatus'] ?? json['faculty_acknowledgment_status'])?.toString() ?? 'pending',
+      facultyRejectionReason: (json['facultyRejectionReason'] ?? json['faculty_rejection_reason'])?.toString(),
+      facultyAcknowledgedBy: (json['facultyAcknowledgedBy'] ?? json['faculty_acknowledged_by'])?.toString(),
+      facultyAcknowledgedAt: (json['facultyAcknowledgedAt'] ?? json['faculty_acknowledged_at'])?.toString(),
     );
   }
 
@@ -338,19 +360,19 @@ class ClassDelegation {
 
   factory ClassDelegation.fromJson(Map<String, dynamic> json) {
     return ClassDelegation(
-      classId: json['classId']?.toString() ?? 'I-MCA-A',
-      advisorName: json['advisorName']?.toString() ?? 'Mrs. V. Nandhini, AP/CA',
-      advisorCode: json['advisorCode']?.toString() ?? 'NAVI2026',
-      crRoll: json['crRoll'] is int ? json['crRoll'] : int.tryParse(json['crRoll']?.toString() ?? ''),
-      crName: json['crName']?.toString(),
-      crCode: json['crCode']?.toString(),
-      maleAsstRoll: json['maleAsstRoll'] is int ? json['maleAsstRoll'] : int.tryParse(json['maleAsstRoll']?.toString() ?? ''),
-      maleAsstName: json['maleAsstName']?.toString(),
-      maleAsstCode: json['maleAsstCode']?.toString(),
-      femaleAsstRoll: json['femaleAsstRoll'] is int ? json['femaleAsstRoll'] : int.tryParse(json['femaleAsstRoll']?.toString() ?? ''),
-      femaleAsstName: json['femaleAsstName']?.toString(),
-      femaleAsstCode: json['femaleAsstCode']?.toString(),
-      studentCode: json['studentCode']?.toString() ?? 'STU2026',
+      classId: (json['classId'] ?? json['class_id'] ?? json['id'])?.toString() ?? 'I-MCA-A',
+      advisorName: (json['advisorName'] ?? json['advisor_name'])?.toString() ?? 'Mrs. V. Nandhini, AP/CA',
+      advisorCode: (json['advisorCode'] ?? json['advisor_code'])?.toString() ?? 'NAVI2026',
+      crRoll: json['crRoll'] is int ? json['crRoll'] : (json['cr_roll'] is int ? json['cr_roll'] : int.tryParse((json['crRoll'] ?? json['cr_roll'])?.toString() ?? '')),
+      crName: (json['crName'] ?? json['cr_name'])?.toString(),
+      crCode: (json['crCode'] ?? json['cr_code'])?.toString(),
+      maleAsstRoll: json['maleAsstRoll'] is int ? json['maleAsstRoll'] : (json['male_asst_roll'] is int ? json['male_asst_roll'] : int.tryParse((json['maleAsstRoll'] ?? json['male_asst_roll'])?.toString() ?? '')),
+      maleAsstName: (json['maleAsstName'] ?? json['male_asst_name'])?.toString(),
+      maleAsstCode: (json['maleAsstCode'] ?? json['male_asst_code'])?.toString(),
+      femaleAsstRoll: json['femaleAsstRoll'] is int ? json['femaleAsstRoll'] : (json['female_asst_roll'] is int ? json['female_asst_roll'] : int.tryParse((json['femaleAsstRoll'] ?? json['female_asst_roll'])?.toString() ?? '')),
+      femaleAsstName: (json['femaleAsstName'] ?? json['female_asst_name'])?.toString(),
+      femaleAsstCode: (json['femaleAsstCode'] ?? json['female_asst_code'])?.toString(),
+      studentCode: (json['studentCode'] ?? json['student_code'])?.toString() ?? 'STU2026',
     );
   }
 
