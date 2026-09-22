@@ -173,10 +173,7 @@ const db = {
       }
     } catch (_) {}
     return [
-      { id: 'I-MCA-A', name: 'I MCA A', batch: '2026–2028', department: 'MCA', totalStudents: 52, advisorName: 'Dr. K. Senthil Nathan', crName: 'MUTHUVEL R' },
-      { id: 'I-MCA-B', name: 'I MCA B', batch: '2026–2028', department: 'MCA', totalStudents: 48, advisorName: 'Prof. R. Priya', crName: 'K. Karthik' },
-      { id: 'II-MCA', name: 'II MCA', batch: '2025–2027', department: 'MCA', totalStudents: 50, advisorName: 'Dr. M. Ramanathan', crName: 'V. Anand' },
-      { id: 'I-BCA', name: 'I BCA', batch: '2026–2029', department: 'BCA', totalStudents: 55, advisorName: 'Prof. S. Meena', crName: 'R. Rajesh' }
+      { id: 'I-MCA-A', name: 'I MCA A', batch: '2026–2028', department: 'MCA', totalStudents: 52, advisorName: 'Mrs. V. Nandhini, AP/CA', crName: 'MUTHUVEL R' }
     ];
   },
 

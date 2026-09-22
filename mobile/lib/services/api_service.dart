@@ -230,7 +230,7 @@ class ApiService {
     }
   }
 
-  // Advisor appoints CR & Assistant CRs directly in Supabase
+  // Advisor appoints or updates CR & Assistant CRs directly in Supabase classes table
   static Future<bool> advisorDelegate({
     String classId = 'I-MCA-A',
     int? crRoll,
@@ -245,9 +245,19 @@ class ApiService {
     String? studentCode,
   }) async {
     try {
-      final Map<String, dynamic> updateData = {};
-      if (crName != null) updateData['cr_name'] = crName;
-      if (updateData.isEmpty) return true;
+      final Map<String, dynamic> updateData = {
+        'cr_roll': crRoll,
+        'cr_name': crName,
+        'cr_code': crCode,
+        'male_asst_roll': maleAsstRoll,
+        'male_asst_name': maleAsstName,
+        'male_asst_code': maleAsstCode,
+        'female_asst_roll': femaleAsstRoll,
+        'female_asst_name': femaleAsstName,
+        'female_asst_code': femaleAsstCode,
+        if (studentCode != null) 'student_code': studentCode,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
 
       final response = await http
           .patch(

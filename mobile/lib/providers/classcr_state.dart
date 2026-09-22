@@ -249,6 +249,34 @@ class ClassCRState extends ChangeNotifier {
       final remoteDelegation = await ApiService.fetchDelegation(classId: 'I-MCA-A');
       if (remoteDelegation != null) {
         _delegation = remoteDelegation;
+        final prefs = await SharedPreferences.getInstance();
+        if (remoteDelegation.crName != null) {
+          await prefs.setString('classcr_delegation_cr_name', remoteDelegation.crName!);
+          if (remoteDelegation.crRoll != null) await prefs.setInt('classcr_delegation_cr_roll', remoteDelegation.crRoll!);
+          if (remoteDelegation.crCode != null) await prefs.setString('classcr_delegation_cr_code', remoteDelegation.crCode!);
+        } else {
+          await prefs.remove('classcr_delegation_cr_name');
+          await prefs.remove('classcr_delegation_cr_roll');
+          await prefs.remove('classcr_delegation_cr_code');
+        }
+        if (remoteDelegation.maleAsstName != null) {
+          await prefs.setString('classcr_delegation_male_asst_name', remoteDelegation.maleAsstName!);
+          if (remoteDelegation.maleAsstRoll != null) await prefs.setInt('classcr_delegation_male_asst_roll', remoteDelegation.maleAsstRoll!);
+          if (remoteDelegation.maleAsstCode != null) await prefs.setString('classcr_delegation_male_asst_code', remoteDelegation.maleAsstCode!);
+        } else {
+          await prefs.remove('classcr_delegation_male_asst_name');
+          await prefs.remove('classcr_delegation_male_asst_roll');
+          await prefs.remove('classcr_delegation_male_asst_code');
+        }
+        if (remoteDelegation.femaleAsstName != null) {
+          await prefs.setString('classcr_delegation_female_asst_name', remoteDelegation.femaleAsstName!);
+          if (remoteDelegation.femaleAsstRoll != null) await prefs.setInt('classcr_delegation_female_asst_roll', remoteDelegation.femaleAsstRoll!);
+          if (remoteDelegation.femaleAsstCode != null) await prefs.setString('classcr_delegation_female_asst_code', remoteDelegation.femaleAsstCode!);
+        } else {
+          await prefs.remove('classcr_delegation_female_asst_name');
+          await prefs.remove('classcr_delegation_female_asst_roll');
+          await prefs.remove('classcr_delegation_female_asst_code');
+        }
       }
       final remoteStudents = await ApiService.fetchStudents(classId: 'I-MCA-A');
       if (remoteStudents != null && remoteStudents.isNotEmpty) {
@@ -940,6 +968,10 @@ class ClassCRState extends ChangeNotifier {
   Future<void> fetchRealtimeAttendance() async {
     if (!_isOnline) return;
     try {
+      final remoteDelegation = await ApiService.fetchDelegation(classId: _currentUser.classId ?? 'I-MCA-A');
+      if (remoteDelegation != null) {
+        _delegation = remoteDelegation;
+      }
       final allPeriods = await ApiService.fetchAllPeriodsAttendance(
         classId: _currentUser.classId ?? 'I-MCA-A',
         date: _todayDate,

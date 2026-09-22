@@ -1,46 +1,43 @@
 -- ==========================================================
--- ClassCR Supabase Database Schema & Initial Data
+-- ClassCR Supabase Database Schema & Initial Data (Clean Production)
 -- Run this in your Supabase SQL Editor:
 -- https://supabase.com/dashboard/project/fbqafmahrhykcpojprrh/sql
 -- ==========================================================
 
--- 0. Migrations — safely add columns that may be missing from older deployments
--- Drop stale unique constraint on enrollment_no (roll_no is the real PK)
-ALTER TABLE public.students DROP CONSTRAINT IF EXISTS students_enrollment_no_key;
+-- 1. DROP OLD TABLES
+DROP TABLE IF EXISTS public.attendance_records CASCADE;
+DROP TABLE IF EXISTS public.reports CASCADE;
+DROP TABLE IF EXISTS public.app_users CASCADE;
+DROP TABLE IF EXISTS public.students CASCADE;
+DROP TABLE IF EXISTS public.classes CASCADE;
 
-ALTER TABLE public.students ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'M';
-ALTER TABLE public.students ADD COLUMN IF NOT EXISTS dob TEXT;
-ALTER TABLE public.students ADD COLUMN IF NOT EXISTS ccr_code TEXT;
-ALTER TABLE public.students ADD COLUMN IF NOT EXISTS department TEXT DEFAULT 'MCA';
-
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS asst_cr_verified BOOLEAN DEFAULT false;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS asst_cr_verified_by TEXT;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS asst_cr_verified_at TEXT;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS period_no INTEGER;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS period_subject TEXT;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowledgment_status TEXT;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowledged_by TEXT;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_acknowledged_at TEXT;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS faculty_rejection_reason TEXT;
--- Allow multiple period records per day by dropping stale class_id,date constraint
-ALTER TABLE public.attendance_records DROP CONSTRAINT IF EXISTS attendance_records_class_id_date_key;
-CREATE UNIQUE INDEX IF NOT EXISTS attendance_records_class_date_period_idx ON public.attendance_records(class_id, date, (COALESCE(period_no, 1)));
-
--- 1. Create Tables
-
-
-CREATE TABLE IF NOT EXISTS public.classes (
+-- 2. CREATE CLASSES TABLE
+-- Holds official class delegation: Advisor (Mrs. V. Nandhini), CR, and Asst. CRs with passcodes.
+CREATE TABLE public.classes (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   batch TEXT NOT NULL,
   department TEXT NOT NULL,
-  total_students INTEGER DEFAULT 0,
-  advisor_name TEXT,
+  total_students INTEGER DEFAULT 52,
+  advisor_name TEXT NOT NULL DEFAULT 'Mrs. V. Nandhini, AP/CA',
+  advisor_code TEXT NOT NULL DEFAULT 'ADV2026',
+  cr_roll INTEGER,
   cr_name TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  cr_code TEXT DEFAULT 'CR2026',
+  male_asst_roll INTEGER,
+  male_asst_name TEXT,
+  male_asst_code TEXT DEFAULT 'MACR2026',
+  female_asst_roll INTEGER,
+  female_asst_name TEXT,
+  female_asst_code TEXT DEFAULT 'FACR2026',
+  student_code TEXT DEFAULT 'STU2026',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS public.students (
+-- 3. CREATE STUDENTS TABLE
+-- 52 MCA Department Students Roster
+CREATE TABLE public.students (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   roll_no INTEGER UNIQUE NOT NULL,
   enrollment_no TEXT NOT NULL,
@@ -53,24 +50,15 @@ CREATE TABLE IF NOT EXISTS public.students (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS public.app_users (
+-- 4. CREATE ATTENDANCE RECORDS TABLE
+-- Individual lecture/period sessions marked in real-time
+CREATE TABLE public.attendance_records (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  role TEXT NOT NULL,
-  college_id TEXT,
-  department_id TEXT,
-  class_id TEXT,
-  student_id TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.attendance_records (
-  id TEXT PRIMARY KEY,
-  class_id TEXT NOT NULL,
+  class_id TEXT NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
   date TEXT NOT NULL,
-  total_students INTEGER NOT NULL,
+  period_no INTEGER DEFAULT 1,
+  period_subject TEXT,
+  total_students INTEGER NOT NULL DEFAULT 52,
   present_count INTEGER NOT NULL,
   absent_count INTEGER NOT NULL,
   absent_rolls JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -82,79 +70,50 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
   status TEXT DEFAULT 'submitted',
   submitted_at TIMESTAMPTZ DEFAULT NOW(),
   notes TEXT,
-  UNIQUE(class_id, date)
+  asst_cr_verified BOOLEAN DEFAULT false,
+  asst_cr_verified_by TEXT,
+  asst_cr_verified_at TEXT,
+  faculty_acknowledgment_status TEXT,
+  faculty_acknowledged_by TEXT,
+  faculty_acknowledged_at TEXT,
+  faculty_rejection_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Migrations for existing deployments
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS marked_by_name TEXT;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS marked_by_role TEXT;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT true;
-ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS last_modified_by TEXT;
+-- Enable multiple periods per date without conflict
+CREATE UNIQUE INDEX IF NOT EXISTS attendance_records_class_date_period_idx 
+  ON public.attendance_records(class_id, date, (COALESCE(period_no, 1)));
 
-CREATE TABLE IF NOT EXISTS public.reports (
-  id TEXT PRIMARY KEY,
-  class_id TEXT NOT NULL,
-  date TEXT NOT NULL,
-  total_students INTEGER NOT NULL,
-  present_count INTEGER NOT NULL,
-  absent_count INTEGER NOT NULL,
-  absent_students JSONB NOT NULL DEFAULT '[]'::jsonb,
-  submitted_at TEXT,
-  status TEXT DEFAULT 'sent',
-  formatted_text TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. Row Level Security (RLS) - Permissive policies for ClassCR
+-- 5. ROW LEVEL SECURITY (RLS) - Permissive policies for mobile app PostgREST
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Allow all access to classes" ON public.classes;
-CREATE POLICY "Allow all access to classes" ON public.classes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all access on classes" ON public.classes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all access on students" ON public.students FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all access on attendance_records" ON public.attendance_records FOR ALL USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Allow all access to students" ON public.students;
-CREATE POLICY "Allow all access to students" ON public.students FOR ALL USING (true) WITH CHECK (true);
+-- 6. SEED OFFICIAL CLASS (I-MCA-A)
+-- Advisor is Mrs. V. Nandhini, AP/CA exclusively
+INSERT INTO public.classes (
+  id, name, batch, department, total_students,
+  advisor_name, advisor_code,
+  cr_roll, cr_name, cr_code,
+  male_asst_roll, male_asst_name, male_asst_code,
+  female_asst_roll, female_asst_name, female_asst_code,
+  student_code
+)
+VALUES (
+  'I-MCA-A', 'I MCA A', '2026–2028', 'MCA', 52,
+  'Mrs. V. Nandhini, AP/CA', 'ADV2026',
+  31, 'MUTHUVEL R', 'CR2026',
+  45, 'SHOVIN MICHEL DAVID', 'MACR2026',
+  13, 'DHIVYALAKSHMI H', 'FACR2026',
+  'STU2026'
+);
 
-DROP POLICY IF EXISTS "Allow all access to app_users" ON public.app_users;
-CREATE POLICY "Allow all access to app_users" ON public.app_users FOR ALL USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow all access to attendance_records" ON public.attendance_records;
-CREATE POLICY "Allow all access to attendance_records" ON public.attendance_records FOR ALL USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow all access to reports" ON public.reports;
-CREATE POLICY "Allow all access to reports" ON public.reports FOR ALL USING (true) WITH CHECK (true);
-
--- 3. Seed Classes
-INSERT INTO public.classes (id, name, batch, department, total_students, advisor_name, cr_name)
-VALUES
-  ('I-MCA-A', 'I MCA A', '2026–2028', 'MCA', 52, 'Dr. K. Senthil Nathan', 'MUTHUVEL R'),
-  ('I-MCA-B', 'I MCA B', '2026–2028', 'MCA', 48, 'Prof. R. Priya', 'K. Karthik'),
-  ('II-MCA', 'II MCA', '2025–2027', 'MCA', 50, 'Dr. M. Ramanathan', 'V. Anand'),
-  ('I-BCA', 'I BCA', '2026–2029', 'BCA', 55, 'Prof. S. Meena', 'R. Rajesh')
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  batch = EXCLUDED.batch,
-  total_students = EXCLUDED.total_students,
-  advisor_name = EXCLUDED.advisor_name,
-  cr_name = EXCLUDED.cr_name;
-
--- 4. Seed Users
-INSERT INTO public.app_users (id, name, email, password, role, college_id, department_id, class_id, student_id)
-VALUES
-  ('user_cr_1', 'MUTHUVEL R (CR)', 'cr@classcr.edu', 'password123', 'cr', 'COL-001', 'MCA', 'I-MCA-A', '260320'),
-  ('user_adv_1', 'Dr. K. Senthil Nathan', 'advisor@classcr.edu', 'password123', 'advisor', 'COL-001', 'MCA', 'I-MCA-A', NULL),
-  ('user_stu_1', 'DHIVYALAKSHMI H', 'student@classcr.edu', 'password123', 'student', 'COL-001', 'MCA', 'I-MCA-A', '260311'),
-  ('user_adm_1', 'College Dean / Administrator', 'admin@classcr.edu', 'password123', 'admin', 'COL-001', 'MCA', NULL, NULL)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  email = EXCLUDED.email,
-  password = EXCLUDED.password,
-  role = EXCLUDED.role;
-
--- 5. Seed 52 MCA Students
+-- 7. SEED OFFICIAL 52 MCA STUDENTS ROSTER
 INSERT INTO public.students (roll_no, enrollment_no, name, dob, gender, ccr_code, class_id, department)
 VALUES
   (1, '260192', 'AASIM S', '21/09/2004', 'M', 'CCR-0001', 'I-MCA-A', 'MCA'),
@@ -217,9 +176,3 @@ ON CONFLICT (roll_no) DO UPDATE SET
   ccr_code = EXCLUDED.ccr_code,
   class_id = EXCLUDED.class_id,
   department = EXCLUDED.department;
-
--- 6. Clean Database for Production (Ready for fresh, real attendance data only)
--- No past dummy attendance records are added.
-TRUNCATE TABLE public.attendance_records CASCADE;
-TRUNCATE TABLE public.reports CASCADE;
-
