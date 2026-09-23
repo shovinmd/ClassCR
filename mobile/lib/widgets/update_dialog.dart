@@ -185,7 +185,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     if (!info.isMandatory && _status != UpdateStatus.downloading)
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.white70),
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          UpdateService.recordUpdateDismissed(info.latestVersion);
+                          Navigator.of(context).pop();
+                        },
                       ),
                   ],
                 ),
@@ -440,7 +443,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
                         if (!info.isMandatory && _status != UpdateStatus.downloading) ...[
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () => Navigator.of(context).pop(),
+                              onPressed: () {
+                                UpdateService.recordUpdateDismissed(info.latestVersion);
+                                Navigator.of(context).pop();
+                              },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 13),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

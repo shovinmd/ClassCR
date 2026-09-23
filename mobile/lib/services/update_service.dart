@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/update_dialog.dart';
 
@@ -201,12 +202,31 @@ class UpdateService {
 
     final info = await checkForUpdates();
     if (info != null && info.hasUpdate && context.mounted) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final lastDismissed = prefs.getString('last_dismissed_update_version');
+        final lastTime = prefs.getInt('last_dismissed_update_time') ?? 0;
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (!info.isMandatory && lastDismissed == info.latestVersion && (now - lastTime) < 12 * 3600 * 1000) {
+          return; // Already dismissed recently; don't bother user repeatedly
+        }
+      } catch (_) {}
+
       showDialog(
         context: context,
         barrierDismissible: !info.isMandatory,
         builder: (_) => UpdateDialog(updateInfo: info),
       );
     }
+  }
+
+  /// Record that the user dismissed or postponed this update version
+  static Future<void> recordUpdateDismissed(String version) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_dismissed_update_version', version);
+      await prefs.setInt('last_dismissed_update_time', DateTime.now().millisecondsSinceEpoch);
+    } catch (_) {}
   }
 
   /// Manually triggered from UI (e.g. "Check for Updates" button)
