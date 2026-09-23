@@ -242,6 +242,30 @@ class _UpdateDialogState extends State<UpdateDialog> {
                       ),
                     ),
 
+                    if (kIsWeb) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 16, color: Color(0xFFD97706)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Note: On your Android phone, this updates and restarts 100% inside the app without opening any browser. (In this PC web preview, it downloads the APK file).',
+                                style: TextStyle(fontSize: 10.5, color: Color(0xFF92400E), height: 1.3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 16),
 
                     // Changelog Section
