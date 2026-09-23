@@ -2,7 +2,7 @@
   "version": "1.0.1",
   "buildNumber": 2,
   "releaseDate": "2026-09-24",
-  "downloadUrl": "https://github.com/shovinmd/ClassCR/raw/main/mobile/build/app/outputs/flutter-apk/app-release.apk",
+  "downloadUrl": "https://github.com/shovinmd/ClassCR/releases/latest/download/app-release.apk",
   "releasesPageUrl": "https://github.com/shovinmd/ClassCR/releases",
   "title": "ClassCR v1.0.1 Update Available",
   "changelog": [
