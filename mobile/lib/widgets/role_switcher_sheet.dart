@@ -3,6 +3,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../providers/classcr_state.dart';
 import '../screens/auth/setup_screen.dart';
+import '../services/update_service.dart';
 
 class RoleSwitcherSheet extends StatelessWidget {
   final ClassCRState state;
@@ -417,7 +418,22 @@ class RoleSwitcherSheet extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  UpdateService.checkForUpdatesManual(context);
+                },
+                icon: const Icon(Icons.system_update_alt, size: 16, color: AppColors.textSecondary),
+                label: const Text(
+                  'Check for App Updates (OTA)',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
           ],
         ),
       ),

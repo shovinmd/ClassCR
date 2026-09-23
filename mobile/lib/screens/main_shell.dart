@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../providers/classcr_state.dart';
+import '../services/update_service.dart';
 import '../widgets/app_header.dart';
 import '../widgets/role_switcher_sheet.dart';
 import 'cr/cr_home_screen.dart';
@@ -25,6 +26,14 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
   UserRole? _lastRole;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.checkForUpdatesAutoPrompt(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

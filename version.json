@@ -1,0 +1,16 @@
+{
+  "version": "1.0.1",
+  "buildNumber": 2,
+  "releaseDate": "2026-09-24",
+  "downloadUrl": "https://github.com/shovinmd/ClassCR/raw/main/mobile/build/app/outputs/flutter-apk/app-release.apk",
+  "releasesPageUrl": "https://github.com/shovinmd/ClassCR/releases",
+  "title": "ClassCR v1.0.1 Update Available",
+  "changelog": [
+    "🚀 In-App OTA Auto-Updater: Download & install updates directly inside the app",
+    "📋 1-Tap 'Copy from Previous Period' attendance feature for CR & Asst. CR",
+    "✨ Sleek rectangular role switcher in header (no bottom button overlap)",
+    "🔓 Student portal instant open-access: Roster selection without passcode",
+    "🛡️ Period 1 isolated as official whole-class master attendance record"
+  ],
+  "isMandatory": false
+}

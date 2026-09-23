@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../providers/classcr_state.dart';
+import '../services/update_service.dart';
 import 'role_switcher_sheet.dart';
 
 class AppHeader extends StatelessWidget {
@@ -156,6 +157,37 @@ class AppHeader extends StatelessWidget {
                   ],
                 ),
               ),
+
+            const SizedBox(width: 8),
+
+            // Check for Updates Button
+            InkWell(
+              onTap: () => UpdateService.checkForUpdatesManual(context),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.system_update_alt, size: 13, color: AppColors.primary),
+                    SizedBox(width: 4),
+                    Text(
+                      'Update',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
             const SizedBox(width: 8),
 
