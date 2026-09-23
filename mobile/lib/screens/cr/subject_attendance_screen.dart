@@ -303,7 +303,8 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
     final isAsstCr = widget.state.currentRole == UserRole.assistantCr;
     final asstGender = widget.state.currentUser.gender;
 
-    final record = widget.state.currentAttendanceRecord;
+    final record = widget.state.periodRecords[_selectedPeriod] ??
+        (widget.state.currentAttendanceRecord?.periodNo == _selectedPeriod ? widget.state.currentAttendanceRecord : null);
     final isDispatchedThisPeriod = record != null && record.periodNo == _selectedPeriod;
     final ackStatus = isDispatchedThisPeriod ? (record.facultyAcknowledgmentStatus ?? 'pending') : 'none';
 
@@ -372,21 +373,26 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFF0D9488)
+                                ? (pNum == 1 ? const Color(0xFFD97706) : const Color(0xFF0D9488))
                                 : (isLocked ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9)),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isSelected ? const Color(0xFF0D9488) : AppColors.cardBorder,
+                              color: isSelected
+                                  ? (pNum == 1 ? const Color(0xFFB45309) : const Color(0xFF0D9488))
+                                  : AppColors.cardBorder,
                             ),
                           ),
                           child: Row(
                             children: [
-                              if (isLocked) ...[
+                              if (pNum == 1) ...[
+                                Icon(Icons.star, size: 12, color: isSelected ? Colors.white : const Color(0xFFD97706)),
+                                const SizedBox(width: 4),
+                              ] else if (isLocked) ...[
                                 Icon(Icons.lock, size: 12, color: isSelected ? Colors.white : AppColors.absentRed),
                                 const SizedBox(width: 4),
                               ],
                               Text(
-                                'P$pNum: $pSubj',
+                                pNum == 1 ? 'P1: $pSubj (Class Master)' : 'P$pNum: $pSubj',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -400,6 +406,50 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
                     }),
                   ),
                 ),
+                const SizedBox(height: 10),
+                // Period 1 vs Subject distinction indicator
+                if (_selectedPeriod == 1)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFCD34D)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.verified, size: 14, color: Color(0xFFD97706)),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '👑 Period 1 is the Master Whole-Class Attendance Record & Lecture 1.',
+                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDFA),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF99F6E4)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.menu_book, size: 14, color: Color(0xFF0D9488)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '📚 Period $_selectedPeriod is Subject Attendance only. Marking here will NOT edit or modify the official class attendance.',
+                            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF115E59)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 12),
 
                 // Respective Faculty Card with live status

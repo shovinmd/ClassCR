@@ -230,17 +230,7 @@ class _MainShellState extends State<MainShell> {
             indicatorColor: AppColors.primary.withOpacity(0.12),
             destinations: destinations,
           ),
-          floatingActionButton: role == UserRole.student
-              ? null
-              : FloatingActionButton.extended(
-                  onPressed: () => RoleSwitcherSheet.show(context, widget.state),
-                  icon: const Icon(Icons.swap_horiz, color: Colors.white),
-                  label: Text(
-                    'Switch Role (${widget.state.currentUser.role.name.toUpperCase()})',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  backgroundColor: AppColors.primary,
-                ),
+          floatingActionButton: null,
         );
       },
     );

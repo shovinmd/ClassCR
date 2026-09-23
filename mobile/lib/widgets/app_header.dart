@@ -54,53 +54,57 @@ class AppHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'ClassCR',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.deepBlue,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        state.currentUser.role == UserRole.admin
-                            ? 'HOD'
-                            : (state.currentUser.role == UserRole.staff
-                                ? 'FACULTY'
-                                : state.currentUser.role.name.toUpperCase()),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'ClassCR',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.deepBlue,
+                          letterSpacing: -0.5,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                Text(
-                  state.currentUser.name,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          state.currentUser.role == UserRole.admin
+                              ? 'HOD'
+                              : (state.currentUser.role == UserRole.staff
+                                  ? 'FACULTY'
+                                  : state.currentUser.role.name.toUpperCase()),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  Text(
+                    state.currentUser.name,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
 
             // Sync Status Badge
             if (state.pendingSyncCount > 0)
@@ -110,15 +114,15 @@ class AppHeader extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.warningYellow.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.sync, size: 14, color: AppColors.warningYellow),
-                      const SizedBox(width: 4),
+                      const Icon(Icons.sync, size: 13, color: AppColors.warningYellow),
+                      const SizedBox(width: 3),
                       Text(
-                        '${state.pendingSyncCount} waiting',
+                        '${state.pendingSyncCount}',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -131,20 +135,20 @@ class AppHeader extends StatelessWidget {
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.presentGreen.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.cloud_done, size: 14, color: AppColors.presentGreen),
-                    SizedBox(width: 4),
+                    Icon(Icons.cloud_done, size: 13, color: AppColors.presentGreen),
+                    SizedBox(width: 3),
                     Text(
                       'Synced',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.presentGreen,
                       ),
@@ -155,51 +159,37 @@ class AppHeader extends StatelessWidget {
 
             const SizedBox(width: 8),
 
-            // Notification Bell
-            IconButton(
-              icon: Stack(
-                children: [
-                  const Icon(Icons.notifications_none, color: AppColors.textPrimary),
-                  Positioned(
-                    right: 2,
-                    top: 2,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.absentRed,
-                        shape: BoxShape.circle,
+            // Rectangular Role Switcher Button in Header Corner
+            InkWell(
+              onTap: () => RoleSwitcherSheet.show(context, state),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.25),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.swap_horiz, size: 15, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Switch (${state.currentUser.role == UserRole.admin ? "HOD" : (state.currentUser.role == UserRole.staff ? "Staff" : (state.currentUser.role == UserRole.assistantCr ? "Asst CR" : (state.currentUser.role == UserRole.advisor ? "Advisor" : (state.currentUser.role == UserRole.cr ? "CR" : "Student"))))})',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('No new alerts. All attendance logs are up-to-date!')),
-                );
-              },
-            ),
-
-            // Profile Avatar / Role Switcher button (kept in Settings for students)
-            GestureDetector(
-              onTap: state.currentRole == UserRole.student
-                  ? null
-                  : () => RoleSwitcherSheet.show(context, state),
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primary, width: 2),
-                ),
-                child: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: AppColors.background,
-                  child: Icon(
-                    state.currentRole == UserRole.student ? Icons.school : Icons.person,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
+                  ],
                 ),
               ),
             ),

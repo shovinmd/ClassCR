@@ -218,128 +218,157 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "I MCA — ${widget.state.formattedTodayDate}",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.deepBlue,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: widget.state.isAttendanceLocked
-                                ? AppColors.presentGreen.withOpacity(0.12)
-                                : const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                widget.state.isAttendanceLocked ? Icons.check_circle : Icons.schedule,
-                                size: 14,
-                                color: widget.state.isAttendanceLocked ? AppColors.presentGreen : const Color(0xFFD97706),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                widget.state.isAttendanceLocked
-                                    ? 'Submitted (${widget.state.currentAttendanceRecord?.submittedAt ?? "09:18 AM"})'
-                                    : 'Pending Submission',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: widget.state.isAttendanceLocked ? AppColors.presentGreen : const Color(0xFFD97706),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                    Builder(
+                      builder: (_) {
+                        final dailyRec = widget.state.dailyClassAttendanceRecord ??
+                            widget.state.periodRecords[1] ??
+                            widget.state.currentAttendanceRecord;
+                        final isSubmitted = dailyRec != null && dailyRec.isLocked;
+                        final displayTotal = dailyRec?.totalStudents ?? widget.state.totalCount;
+                        final displayAbsent = dailyRec?.absentCount ?? widget.state.absentCount;
+                        final displayPresent = displayTotal - displayAbsent;
 
-                    const Divider(height: 24),
-
-                    // Metrics table: Total, Present, Absent
-                    Row(
-                      children: [
-                        _buildStatBox('Total', '${widget.state.totalCount}', AppColors.textPrimary),
-                        _buildStatBox('Present', '${widget.state.presentCount}', AppColors.presentGreen),
-                        _buildStatBox('Absent', '${widget.state.absentCount}', AppColors.absentRed),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // Marked By & Last Updated
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  'Attendance Marked By',
-                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                ),
-                                const SizedBox(height: 2),
-                                Row(
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(
-                                      widget.state.isAttendanceLocked ? Icons.verified : Icons.pending,
-                                      size: 14,
-                                      color: widget.state.isAttendanceLocked ? AppColors.presentGreen : AppColors.textSecondary,
+                                    Text(
+                                      "I MCA — ${widget.state.formattedTodayDate}",
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.deepBlue,
+                                      ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        widget.state.currentAttendanceRecord?.markedByName != null
-                                            ? '${widget.state.currentAttendanceRecord!.markedByName} (${widget.state.currentAttendanceRecord!.markedByRole ?? "CR"})'
-                                            : '${widget.state.delegation.crName} (CR)',
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                        overflow: TextOverflow.ellipsis,
+                                    const Text(
+                                      "👑 Period 1: Official Class Record",
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFD97706),
                                       ),
                                     ),
                                   ],
                                 ),
-                                if (widget.state.currentAttendanceRecord?.lastModifiedBy != null &&
-                                    widget.state.currentAttendanceRecord!.lastModifiedBy!.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Approved by Advisor: ${widget.state.currentAttendanceRecord!.lastModifiedBy}',
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isSubmitted
+                                        ? AppColors.presentGreen.withOpacity(0.12)
+                                        : const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                ],
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isSubmitted ? Icons.check_circle : Icons.schedule,
+                                        size: 14,
+                                        color: isSubmitted ? AppColors.presentGreen : const Color(0xFFD97706),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isSubmitted
+                                            ? 'Submitted (${dailyRec.submittedAt ?? "09:18 AM"})'
+                                            : 'Pending Submission',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: isSubmitted ? AppColors.presentGreen : const Color(0xFFD97706),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text(
-                                'Last Updated',
-                                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+
+                            const Divider(height: 24),
+
+                            // Metrics table: Total, Present, Absent
+                            Row(
+                              children: [
+                                _buildStatBox('Total', '$displayTotal', AppColors.textPrimary),
+                                _buildStatBox('Present', '$displayPresent', AppColors.presentGreen),
+                                _buildStatBox('Absent', '$displayAbsent', AppColors.absentRed),
+                              ],
+                            ),
+
+                            const SizedBox(height: 18),
+
+                            // Marked By & Last Updated
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                widget.state.currentAttendanceRecord?.submittedAt ?? '09:18 AM',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Class Attendance Marked By',
+                                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              isSubmitted ? Icons.verified : Icons.pending,
+                                              size: 14,
+                                              color: isSubmitted ? AppColors.presentGreen : AppColors.textSecondary,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Flexible(
+                                              child: Text(
+                                                dailyRec?.markedByName != null
+                                                    ? '${dailyRec!.markedByName} (${dailyRec.markedByRole ?? "CR"})'
+                                                    : '${widget.state.delegation.crName} (CR)',
+                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (dailyRec?.lastModifiedBy != null && dailyRec!.lastModifiedBy!.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Approved by Advisor: ${dailyRec.lastModifiedBy}',
+                                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      const Text(
+                                        'Last Updated',
+                                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        dailyRec?.submittedAt ?? '09:18 AM',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 16),

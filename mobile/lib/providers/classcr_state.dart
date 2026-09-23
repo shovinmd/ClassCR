@@ -79,6 +79,14 @@ class ClassCRState extends ChangeNotifier {
   }
   AttendanceRecord? get currentAttendanceRecord => _rawCurrentAttendanceRecord;
 
+  /// Authoritative daily class attendance record for the entire day (strictly Period 1)
+  AttendanceRecord? get dailyClassAttendanceRecord =>
+      _periodRecords[1] ??
+      _history.cast<AttendanceRecord?>().firstWhere(
+        (r) => r != null && (r.isDailyClassRecord || r.periodNo == 1),
+        orElse: () => null,
+      );
+
   /// Switch the viewed/active period and load its attendance state
   void switchToPeriod(int periodNo) {
     if (_viewingPeriodNo == periodNo) {
@@ -102,6 +110,7 @@ class ClassCRState extends ChangeNotifier {
           markedByName: _currentUser.name,
           markedByRole: _currentUser.roleDisplayName,
           isLocked: false,
+          isDailyClassRecord: _viewingPeriodNo == 1,
           status: 'draft',
           isSynced: false,
           notes: _crNotes,
@@ -1091,6 +1100,7 @@ class ClassCRState extends ChangeNotifier {
       absentCount: absentCount,
       absentRolls: _absentRolls.toList()..sort(),
       isLocked: false,
+      isDailyClassRecord: _viewingPeriodNo == 1,
       periodNo: _viewingPeriodNo,
       periodSubject: getPeriodSubject(_viewingPeriodNo),
     )).copyWith(
@@ -1098,6 +1108,7 @@ class ClassCRState extends ChangeNotifier {
       asstCrVerifiedBy: _currentUser.name,
       asstCrVerifiedAt: timeStr,
       isLocked: false,
+      isDailyClassRecord: _viewingPeriodNo == 1,
       status: 'draft',
       notes: notes ?? _crNotes,
       markedByName: _currentUser.name,
@@ -1212,6 +1223,7 @@ class ClassCRState extends ChangeNotifier {
       asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
       periodNo: pNo,
       periodSubject: pSubject,
+      isDailyClassRecord: pNo == 1,
     );
 
     _currentAttendanceRecord = record;
@@ -1277,6 +1289,7 @@ class ClassCRState extends ChangeNotifier {
       asstCrVerifiedAt: _currentAttendanceRecord?.asstCrVerifiedAt,
       periodNo: pNo,
       periodSubject: pSubject,
+      isDailyClassRecord: pNo == 1,
     );
 
     _currentAttendanceRecord = record;
@@ -1525,7 +1538,7 @@ class ClassCRState extends ChangeNotifier {
   // Generate Smart Report formatted text
   String generateSmartReportText() {
     // Period 1 is the official daily class attendance record
-    final primaryRecord = _periodRecords[1] ?? _rawCurrentAttendanceRecord;
+    final primaryRecord = dailyClassAttendanceRecord ?? _periodRecords[1] ?? _rawCurrentAttendanceRecord;
     final sortedAbsentees = (primaryRecord != null ? primaryRecord.absentRolls : _absentRolls.toList())..sort();
     final pTotal = primaryRecord?.totalStudents ?? totalCount;
     final pAbsent = sortedAbsentees.length;
@@ -1576,7 +1589,7 @@ class ClassCRState extends ChangeNotifier {
         final p = entry.key;
         final rec = entry.value;
         final subj = rec.periodSubject ?? getPeriodSubject(p);
-        buffer.writeln("• Period $p ($subj): ${rec.presentCount} Present, ${rec.absentCount} Absent");
+        buffer.writeln("• Period $p ($subj)${p == 1 ? ' [Official Class Record]' : ''}: ${rec.presentCount} Present, ${rec.absentCount} Absent");
         if (rec.absentRolls.isNotEmpty) {
           buffer.writeln("  Absentees (Roll): ${rec.absentRolls.join(', ')}");
         }

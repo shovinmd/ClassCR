@@ -168,6 +168,7 @@ class ApiService {
         'asst_cr_verified_at': asstCrVerifiedAt ?? '',
         'period_no': pNo,
         'period_subject': periodSubject ?? '',
+        'is_daily_class_record': pNo == 1,
       });
 
       final response = await http

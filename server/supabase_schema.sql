@@ -58,6 +58,7 @@ CREATE TABLE public.attendance_records (
   date TEXT NOT NULL,
   period_no INTEGER DEFAULT 1,
   period_subject TEXT,
+  is_daily_class_record BOOLEAN DEFAULT false,
   total_students INTEGER NOT NULL DEFAULT 52,
   present_count INTEGER NOT NULL,
   absent_count INTEGER NOT NULL,
@@ -84,6 +85,23 @@ CREATE TABLE public.attendance_records (
 -- Enable multiple periods per date without conflict
 CREATE UNIQUE INDEX IF NOT EXISTS attendance_records_class_date_period_idx 
   ON public.attendance_records(class_id, date, (COALESCE(period_no, 1)));
+
+-- Trigger to guarantee Period 1 is always flagged as the Official Daily Class Record
+CREATE OR REPLACE FUNCTION set_daily_class_record_flag()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.period_no = 1 THEN
+    NEW.is_daily_class_record := true;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_set_daily_class_record ON public.attendance_records;
+CREATE TRIGGER trg_set_daily_class_record
+BEFORE INSERT OR UPDATE ON public.attendance_records
+FOR EACH ROW
+EXECUTE FUNCTION set_daily_class_record_flag();
 
 -- 5. ROW LEVEL SECURITY (RLS) - Permissive policies for mobile app PostgREST
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;

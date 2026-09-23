@@ -155,6 +155,7 @@ class AttendanceRecord {
   final String? asstCrVerifiedAt;
   final int? periodNo;
   final String? periodSubject;
+  final bool isDailyClassRecord;
   final String? facultyAcknowledgmentStatus; // 'pending', 'acknowledged', 'rejected'
   final String? facultyRejectionReason;
   final String? facultyAcknowledgedBy;
@@ -181,6 +182,7 @@ class AttendanceRecord {
     this.asstCrVerifiedAt,
     this.periodNo,
     this.periodSubject,
+    this.isDailyClassRecord = false,
     this.facultyAcknowledgmentStatus = 'pending',
     this.facultyRejectionReason,
     this.facultyAcknowledgedBy,
@@ -208,6 +210,7 @@ class AttendanceRecord {
     String? asstCrVerifiedAt,
     int? periodNo,
     String? periodSubject,
+    bool? isDailyClassRecord,
     String? facultyAcknowledgmentStatus,
     String? facultyRejectionReason,
     String? facultyAcknowledgedBy,
@@ -234,6 +237,7 @@ class AttendanceRecord {
       asstCrVerifiedAt: asstCrVerifiedAt ?? this.asstCrVerifiedAt,
       periodNo: periodNo ?? this.periodNo,
       periodSubject: periodSubject ?? this.periodSubject,
+      isDailyClassRecord: isDailyClassRecord ?? this.isDailyClassRecord,
       facultyAcknowledgmentStatus: facultyAcknowledgmentStatus ?? this.facultyAcknowledgmentStatus,
       facultyRejectionReason: facultyRejectionReason ?? this.facultyRejectionReason,
       facultyAcknowledgedBy: facultyAcknowledgedBy ?? this.facultyAcknowledgedBy,
@@ -250,6 +254,16 @@ class AttendanceRecord {
 
     final rawLocked = json['isLocked'] ?? json['is_locked'];
     final bool isLocked = rawLocked == true || rawLocked == 1 || rawLocked == 'true';
+
+    final parsedPeriodNo = json['periodNo'] is int
+        ? json['periodNo'] as int
+        : json['period_no'] is int
+            ? json['period_no'] as int
+            : int.tryParse((json['periodNo'] ?? json['period_no'])?.toString() ?? '');
+
+    final bool isDaily = json['isDailyClassRecord'] == true ||
+        json['is_daily_class_record'] == true ||
+        parsedPeriodNo == 1;
 
     return AttendanceRecord(
       id: json['id']?.toString() ?? 'att_${json['date']}',
@@ -270,12 +284,9 @@ class AttendanceRecord {
       asstCrVerified: json['asstCrVerified'] == true || json['asst_cr_verified'] == true,
       asstCrVerifiedBy: (json['asstCrVerifiedBy'] ?? json['asst_cr_verified_by'])?.toString(),
       asstCrVerifiedAt: (json['asstCrVerifiedAt'] ?? json['asst_cr_verified_at'])?.toString(),
-      periodNo: json['periodNo'] is int
-          ? json['periodNo']
-          : json['period_no'] is int
-              ? json['period_no']
-              : int.tryParse((json['periodNo'] ?? json['period_no'])?.toString() ?? ''),
+      periodNo: parsedPeriodNo,
       periodSubject: (json['periodSubject'] ?? json['period_subject'])?.toString(),
+      isDailyClassRecord: isDaily,
       facultyAcknowledgmentStatus: (json['facultyAcknowledgmentStatus'] ?? json['faculty_acknowledgment_status'])?.toString() ?? 'pending',
       facultyRejectionReason: (json['facultyRejectionReason'] ?? json['faculty_rejection_reason'])?.toString(),
       facultyAcknowledgedBy: (json['facultyAcknowledgedBy'] ?? json['faculty_acknowledged_by'])?.toString(),
@@ -304,6 +315,8 @@ class AttendanceRecord {
     'asstCrVerifiedAt': asstCrVerifiedAt,
     'periodNo': periodNo,
     'periodSubject': periodSubject,
+    'isDailyClassRecord': isDailyClassRecord,
+    'is_daily_class_record': isDailyClassRecord,
     'facultyAcknowledgmentStatus': facultyAcknowledgmentStatus,
     'facultyRejectionReason': facultyRejectionReason,
     'facultyAcknowledgedBy': facultyAcknowledgedBy,

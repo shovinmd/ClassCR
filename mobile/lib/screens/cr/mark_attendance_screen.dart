@@ -264,22 +264,28 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(isMorning ? Icons.wb_sunny_outlined : Icons.menu_book, size: 18, color: const Color(0xFF2563EB)),
+                              Icon(isMorning ? Icons.stars : Icons.menu_book, size: 18, color: isMorning ? const Color(0xFFD97706) : const Color(0xFF2563EB)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   isMorning
-                                      ? 'Morning 1st Lecture • Dispatches to Advisor & $subj Faculty'
-                                      : 'Period $_selectedPeriod Lecture Log • Dispatches to $subj Faculty',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF1E40AF), fontWeight: FontWeight.bold),
+                                      ? '👑 Period 1: $subj • Official Class Day Record & Lecture 1'
+                                      : '📚 Period $_selectedPeriod: $subj • Subject Attendance Only',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isMorning ? const Color(0xFF92400E) : const Color(0xFF1E40AF),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Faculty: ${fac?.name ?? "Subject Faculty"} (${fac?.subject ?? subj})\nAdvisor: Mrs. V. Nandhini, AP/CA',
-                            style: const TextStyle(fontSize: 11, color: Color(0xFF1E3A8A)),
+                            isMorning
+                                ? '• Establishes the authoritative Daily Class Attendance for the Department.\n• Subject: $subj • Faculty: ${fac?.name ?? "Subject Faculty"}\n• Advisor: Mrs. V. Nandhini, AP/CA'
+                                : '• Subject Attendance only: strictly preserves official class attendance.\n• Subject: $subj • Faculty: ${fac?.name ?? "Subject Faculty"}',
+                            style: TextStyle(fontSize: 11, color: isMorning ? const Color(0xFF78350F) : const Color(0xFF1E3A8A)),
                           ),
                           const SizedBox(height: 8),
                           // Period Selector Chips
@@ -804,11 +810,21 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.access_time_filled, size: 14, color: AppColors.primary),
+                                  Icon(
+                                    widget.state.viewingPeriodNo == 1 ? Icons.stars : Icons.access_time_filled,
+                                    size: 14,
+                                    color: widget.state.viewingPeriodNo == 1 ? const Color(0xFFD97706) : AppColors.primary,
+                                  ),
                                   const SizedBox(width: 5),
                                   Text(
-                                    'Period ${widget.state.viewingPeriodNo}: ${widget.state.activePeriodSubject ?? "Subject"}',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.deepBlue),
+                                    widget.state.viewingPeriodNo == 1
+                                        ? 'Period 1: ${widget.state.activePeriodSubject ?? "Subject"} (Official Class Day Record)'
+                                        : 'Period ${widget.state.viewingPeriodNo}: ${widget.state.activePeriodSubject ?? "Subject"} (Subject Attendance)',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: widget.state.viewingPeriodNo == 1 ? const Color(0xFFB45309) : AppColors.deepBlue,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -843,12 +859,12 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? AppColors.primary
+                                          ? (pNum == 1 ? const Color(0xFFD97706) : AppColors.primary)
                                           : (isLocked ? const Color(0xFFF1F5F9) : Colors.white),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
                                         color: isSelected
-                                            ? AppColors.primary
+                                            ? (pNum == 1 ? const Color(0xFFB45309) : AppColors.primary)
                                             : (hasRecord ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0)),
                                         width: isSelected ? 1.5 : 1,
                                       ),
@@ -856,7 +872,12 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        if (isLocked)
+                                        if (pNum == 1)
+                                          Padding(
+                                            padding: const EdgeInsets.only(right: 4),
+                                            child: Icon(Icons.star, size: 11, color: isSelected ? Colors.white : const Color(0xFFD97706)),
+                                          )
+                                        else if (isLocked)
                                           const Padding(
                                             padding: EdgeInsets.only(right: 4),
                                             child: Icon(Icons.lock, size: 11, color: Color(0xFF94A3B8)),
@@ -867,7 +888,7 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                                             child: Icon(Icons.check_circle, size: 11, color: AppColors.presentGreen),
                                           ),
                                         Text(
-                                          'P$pNum: $subj',
+                                          pNum == 1 ? 'P1: $subj (Class Master)' : 'P$pNum: $subj',
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
@@ -883,6 +904,50 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                               }),
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          // Clear status distinction banner
+                          if (widget.state.viewingPeriodNo == 1)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFFCD34D)),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.verified, size: 14, color: Color(0xFFD97706)),
+                                  SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      '👑 Period 1 serves as BOTH Period 1 Subject Attendance AND the Authoritative Class Attendance Record for today.',
+                                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0FDF4),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFBBF7D0)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.menu_book, size: 14, color: Color(0xFF16A34A)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      '📚 Period ${widget.state.viewingPeriodNo} (${widget.state.activePeriodSubject ?? "Subject"}) is Subject Attendance only. It will NOT overwrite or alter the official class attendance.',
+                                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),

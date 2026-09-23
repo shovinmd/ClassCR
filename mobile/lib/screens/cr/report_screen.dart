@@ -60,7 +60,11 @@ class ReportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reportText = state.generateSmartReportText();
-    final absentees = state.absentRolls.toList()..sort();
+    final dailyRec = state.dailyClassAttendanceRecord ?? state.periodRecords[1] ?? state.currentAttendanceRecord;
+    final absentees = (dailyRec != null ? dailyRec.absentRolls : state.absentRolls.toList())..sort();
+    final displayTotal = dailyRec?.totalStudents ?? state.totalCount;
+    final displayAbsent = absentees.length;
+    final displayPresent = displayTotal - displayAbsent;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -121,7 +125,7 @@ class ReportScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Formatted according to advisor requirements for I MCA',
+                          'Formatted according to advisor requirements for I MCA (Period 1 Class Record)',
                           style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],
@@ -153,9 +157,26 @@ class ReportScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Title
-                  const Text(
-                    'Attendance Report',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.deepBlue),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Attendance Report',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.deepBlue),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFFCD34D)),
+                        ),
+                        child: const Text(
+                          '👑 Period 1: Official Class Record',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                        ),
+                      ),
+                    ],
                   ),
                   const Text(
                     'I MCA A — MVIT',
@@ -178,11 +199,11 @@ class ReportScreen extends StatelessWidget {
                           border: Border.all(color: const Color(0xFFBFDBFE)),
                         ),
                         child: Text(
-                          'Marked by: ${state.currentAttendanceRecord?.markedByName ?? state.currentUser.name} (${state.currentAttendanceRecord?.markedByRole ?? state.currentUser.roleDisplayName})',
+                          'Marked by: ${dailyRec?.markedByName ?? state.currentAttendanceRecord?.markedByName ?? state.currentUser.name} (${dailyRec?.markedByRole ?? state.currentAttendanceRecord?.markedByRole ?? state.currentUser.roleDisplayName})',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                         ),
                       ),
-                      if (state.currentAttendanceRecord?.lastModifiedBy != null && state.currentAttendanceRecord!.lastModifiedBy!.isNotEmpty)
+                      if (dailyRec?.lastModifiedBy != null && dailyRec!.lastModifiedBy!.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
@@ -191,7 +212,7 @@ class ReportScreen extends StatelessWidget {
                             border: Border.all(color: const Color(0xFFA7F3D0)),
                           ),
                           child: Text(
-                            'Advisor Approved: ${state.currentAttendanceRecord!.lastModifiedBy}',
+                            'Advisor Approved: ${dailyRec.lastModifiedBy}',
                             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
                           ),
                         ),
@@ -201,9 +222,9 @@ class ReportScreen extends StatelessWidget {
                   const Divider(height: 24, thickness: 1),
 
                   // Counts
-                  _buildReportLine('Total Students:', '${state.totalCount}'),
-                  _buildReportLine('Present:', '${state.presentCount}', color: AppColors.presentGreen),
-                  _buildReportLine('Absent:', '${state.absentCount}', color: AppColors.absentRed),
+                  _buildReportLine('Total Students:', '$displayTotal'),
+                  _buildReportLine('Present:', '$displayPresent', color: AppColors.presentGreen),
+                  _buildReportLine('Absent:', '$displayAbsent', color: AppColors.absentRed),
 
                   const Divider(height: 24, thickness: 1),
 
