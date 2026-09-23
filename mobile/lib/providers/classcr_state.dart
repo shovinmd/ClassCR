@@ -1184,6 +1184,30 @@ class ClassCRState extends ChangeNotifier {
     return true;
   }
 
+  /// Copy attendance from the immediate previous marked period or Period 1
+  bool copyAttendanceFromPreviousPeriod([int? targetPeriod]) {
+    if (!canModifyAttendance) return false;
+    final target = targetPeriod ?? _viewingPeriodNo;
+
+    // Look for the closest preceding marked period (e.g. target - 1, target - 2, ... down to 1)
+    AttendanceRecord? previousRecord;
+    for (int p = target - 1; p >= 1; p--) {
+      if (_periodRecords.containsKey(p)) {
+        previousRecord = _periodRecords[p];
+        break;
+      }
+    }
+    // Fallback to Period 1 or daily class attendance record
+    previousRecord ??= _periodRecords[1] ?? dailyClassAttendanceRecord;
+
+    if (previousRecord == null) return false;
+
+    _absentRolls.clear();
+    _absentRolls.addAll(previousRecord.absentRolls);
+    notifyListeners();
+    return true;
+  }
+
   void updateNotes(String notes) {
     _crNotes = notes;
     notifyListeners();

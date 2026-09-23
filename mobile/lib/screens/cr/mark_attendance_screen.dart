@@ -764,8 +764,33 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                   onSelected: (val) {
                     if (val == 'all_present') widget.state.markAllPresent();
                     if (val == 'all_absent') widget.state.markAllAbsent();
+                    if (val == 'copy_prev') {
+                      final ok = widget.state.copyAttendanceFromPreviousPeriod();
+                      if (ok) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: const Color(0xFF0D9488),
+                            content: Text(
+                              '📋 Copied attendance from previous period! (${widget.state.presentCount} Present, ${widget.state.absentCount} Absent). Review and lock when ready.',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        );
+                      }
+                    }
                   },
                   itemBuilder: (_) => [
+                    if (widget.state.viewingPeriodNo > 1 || widget.state.periodRecords.isNotEmpty)
+                      const PopupMenuItem(
+                        value: 'copy_prev',
+                        child: Row(
+                          children: [
+                            Icon(Icons.copy_all, color: Color(0xFF0D9488), size: 18),
+                            SizedBox(width: 8),
+                            Text('Copy from Previous Period'),
+                          ],
+                        ),
+                      ),
                     const PopupMenuItem(
                       value: 'all_present',
                       child: Row(
@@ -946,6 +971,57 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                          if (widget.state.canModifyAttendance && !widget.state.isAttendanceLocked && (widget.state.viewingPeriodNo > 1 || widget.state.periodRecords.isNotEmpty))
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: InkWell(
+                                onTap: () {
+                                  final ok = widget.state.copyAttendanceFromPreviousPeriod();
+                                  if (ok) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: const Color(0xFF0D9488),
+                                        content: Text(
+                                          '📋 Copied attendance from previous period! (${widget.state.presentCount} Present, ${widget.state.absentCount} Absent). Review and lock when ready.',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('No previous period attendance record found to copy from.'),
+                                      ),
+                                    );
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0FDFA),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFF0D9488).withOpacity(0.5)),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.copy_all, size: 15, color: Color(0xFF0D9488)),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '📋 Copy Attendance from Previous Period (P${widget.state.viewingPeriodNo > 1 ? widget.state.viewingPeriodNo - 1 : 1})',
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF0D9488),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                         ],

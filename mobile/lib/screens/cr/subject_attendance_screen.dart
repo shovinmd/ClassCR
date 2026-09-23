@@ -324,7 +324,7 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
         ),
         actions: [
           Container(
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: const Color(0xFF0D9488).withOpacity(0.1),
@@ -339,6 +339,62 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
               ],
             ),
           ),
+          if (widget.state.canModifyAttendance)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (val) {
+                if (val == 'all_present') widget.state.markAllPresent();
+                if (val == 'all_absent') widget.state.markAllAbsent();
+                if (val == 'copy_prev') {
+                  final ok = widget.state.copyAttendanceFromPreviousPeriod(_selectedPeriod);
+                  if (ok) {
+                    setState(() {});
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(0xFF0D9488),
+                        content: Text(
+                          '📋 Copied attendance from previous period! (${widget.state.presentCount} Present, ${widget.state.absentCount} Absent). Review and dispatch when ready.',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              itemBuilder: (_) => [
+                if (_selectedPeriod > 1 || widget.state.periodRecords.isNotEmpty)
+                  const PopupMenuItem(
+                    value: 'copy_prev',
+                    child: Row(
+                      children: [
+                        Icon(Icons.copy_all, color: Color(0xFF0D9488), size: 18),
+                        SizedBox(width: 8),
+                        Text('Copy from Previous Period'),
+                      ],
+                    ),
+                  ),
+                const PopupMenuItem(
+                  value: 'all_present',
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline, color: AppColors.presentGreen, size: 18),
+                      SizedBox(width: 8),
+                      Text('Mark All Present'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'all_absent',
+                  child: Row(
+                    children: [
+                      Icon(Icons.cancel_outlined, color: AppColors.absentRed, size: 18),
+                      SizedBox(width: 8),
+                      Text('Mark All Absent'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       body: Column(
@@ -448,6 +504,56 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                if (widget.state.canModifyAttendance && (_selectedPeriod > 1 || widget.state.periodRecords.isNotEmpty))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: InkWell(
+                      onTap: () {
+                        final ok = widget.state.copyAttendanceFromPreviousPeriod(_selectedPeriod);
+                        if (ok) {
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: const Color(0xFF0D9488),
+                              content: Text(
+                                '📋 Copied attendance from previous period! (${widget.state.presentCount} Present, ${widget.state.absentCount} Absent). Review and dispatch when ready.',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('No previous period record found to copy from.')),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDFA),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF0D9488).withOpacity(0.5)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.copy_all, size: 15, color: Color(0xFF0D9488)),
+                            const SizedBox(width: 6),
+                            Text(
+                              '📋 Copy Attendance from Previous Period (P${_selectedPeriod > 1 ? _selectedPeriod - 1 : 1})',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0D9488),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 const SizedBox(height: 12),
