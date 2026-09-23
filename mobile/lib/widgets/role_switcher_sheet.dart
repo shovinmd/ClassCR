@@ -140,8 +140,6 @@ class RoleSwitcherSheet extends StatelessWidget {
 
   void _showStudentSwitchDialog(BuildContext context) {
     Student? selectedStudent = state.students.isNotEmpty ? state.students.first : null;
-    final codeController = TextEditingController(text: 'STU2026');
-    String error = '';
 
     showDialog(
       context: context,
@@ -151,11 +149,11 @@ class RoleSwitcherSheet extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             title: const Row(
               children: [
-                Icon(Icons.school_outlined, color: AppColors.primary),
+                Icon(Icons.school_outlined, color: AppColors.presentGreen),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Student Identity & Passcode',
+                    'Select Student to View',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -167,10 +165,10 @@ class RoleSwitcherSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Select your name from the I MCA A class roster:',
+                    'Select your name from the I MCA A class roster to view attendance records:',
                     style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -201,27 +199,44 @@ class RoleSwitcherSheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Enter Student Passcode or your CCR Code:',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: codeController,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      labelText: 'Passcode / Code',
-                      hintText: 'STU2026',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.key, size: 18),
-                    ),
-                  ),
-                  if (error.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      error,
-                      style: const TextStyle(fontSize: 12, color: AppColors.absentRed, fontWeight: FontWeight.bold),
+                  if (selectedStudent != null) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            selectedStudent!.isFemale ? Icons.female : Icons.male,
+                            color: AppColors.presentGreen,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  selectedStudent!.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Color(0xFF065F46),
+                                  ),
+                                ),
+                                Text(
+                                  'Roll #${selectedStudent!.rollNo} • Register: ${selectedStudent!.enrollmentNo}',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF047857)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ],
@@ -232,40 +247,25 @@ class RoleSwitcherSheet extends StatelessWidget {
                 onPressed: () => Navigator.pop(dialogCtx),
                 child: const Text('Cancel'),
               ),
-              ElevatedButton(
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: const Text('View Attendance'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: AppColors.presentGreen,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () async {
-                  if (selectedStudent == null) {
-                    setDialogState(() => error = 'Please select a student from the roster.');
-                    return;
-                  }
-                  final entered = codeController.text.trim().toUpperCase();
-                  final res = await state.verifyRolePasscode(
-                    classId: 'I-MCA-A',
-                    role: UserRole.student,
-                    code: entered,
-                    rollNo: selectedStudent!.rollNo,
+                onPressed: () {
+                  if (selectedStudent == null) return;
+                  Navigator.pop(dialogCtx);
+                  Navigator.pop(context);
+                  state.switchRole(
+                    UserRole.student,
+                    customName: selectedStudent!.name,
+                    customStudentId: selectedStudent!.enrollmentNo,
+                    customGender: selectedStudent!.isFemale ? 'F' : 'M',
                   );
-
-                  if (res['valid'] == true) {
-                    Navigator.pop(dialogCtx);
-                    Navigator.pop(context);
-                    state.switchRole(
-                      UserRole.student,
-                      customName: selectedStudent!.name,
-                      customStudentId: selectedStudent!.enrollmentNo,
-                      customGender: selectedStudent!.isFemale ? 'F' : 'M',
-                    );
-                  } else {
-                    setDialogState(() {
-                      error = res['error']?.toString() ?? 'Invalid student passcode!';
-                    });
-                  }
                 },
-                child: const Text('Unlock & Switch'),
               ),
             ],
           );

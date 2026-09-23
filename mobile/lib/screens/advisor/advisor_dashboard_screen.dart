@@ -1156,18 +1156,35 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
 
                     const Divider(height: 28),
 
-                    // 4. STUDENT PORTAL PASSCODE
-                    const Text('Student Portal Access Passcode:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _studentCodeCtrl,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        labelText: 'Student Passcode',
-                        hintText: 'e.g. STU2026',
-                        prefixIcon: Icon(Icons.school, size: 18),
-                        border: OutlineInputBorder(),
-                        isDense: true,
+                    // 4. STUDENT PORTAL ACCESS
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, color: AppColors.presentGreen, size: 20),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Student Portal Access: Open Access',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF166534)),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Students directly select their name from the class roster to view attendance. No passcode required.',
+                                  style: TextStyle(fontSize: 11, color: Color(0xFF15803D)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 

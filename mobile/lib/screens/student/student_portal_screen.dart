@@ -148,6 +148,11 @@ class StudentPortalScreen extends StatelessWidget {
                     ),
                   ),
                   IconButton(
+                    icon: const Icon(Icons.person_search_outlined, color: Colors.white),
+                    tooltip: 'Change / Select Student',
+                    onPressed: () => _showStudentPickerDialog(context),
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.refresh, color: Colors.white),
                     tooltip: 'Refresh from Supabase',
                     onPressed: () async {
@@ -735,6 +740,101 @@ class StudentPortalScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showStudentPickerDialog(BuildContext context) {
+    Student? selected = state.students.isNotEmpty ? state.students.first : null;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: const Row(
+              children: [
+                Icon(Icons.school_outlined, color: AppColors.presentGreen),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Select Student to View',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Select student name from I MCA A class roster:',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.cardBorder),
+                      borderRadius: BorderRadius.circular(10),
+                      color: const Color(0xFFF8FAFC),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<Student>(
+                        isExpanded: true,
+                        value: selected,
+                        hint: const Text('Select student name'),
+                        items: state.students.map((st) {
+                          return DropdownMenuItem<Student>(
+                            value: st,
+                            child: Text(
+                              '${st.rollNo}. ${st.name} (${st.enrollmentNo})',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            selected = val;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: const Text('View Attendance'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.presentGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () {
+                  if (selected == null) return;
+                  Navigator.pop(dialogCtx);
+                  state.switchRole(
+                    UserRole.student,
+                    customName: selected!.name,
+                    customStudentId: selected!.enrollmentNo,
+                    customGender: selected!.isFemale ? 'F' : 'M',
+                  );
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
