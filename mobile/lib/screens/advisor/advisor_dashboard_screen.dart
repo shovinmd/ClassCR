@@ -610,8 +610,8 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                         final timing = kMcaPeriodTimings[idx.clamp(0, kMcaPeriodTimings.length - 1)];
                         final isAdvisorSubject = faculty != null && faculty.name.contains('Nandhini');
 
-                        final record = widget.state.currentAttendanceRecord;
-                        final isMarkedForPeriod = record != null && record.periodNo == pNum;
+                        final record = widget.state.periodRecords[pNum] ?? (widget.state.currentAttendanceRecord?.periodNo == pNum ? widget.state.currentAttendanceRecord : null);
+                        final isMarkedForPeriod = record != null;
                         final ackStatus = isMarkedForPeriod ? (record.facultyAcknowledgmentStatus ?? 'pending') : null;
 
                         return Container(
@@ -670,12 +670,17 @@ class _AdvisorDashboardScreenState extends State<AdvisorDashboardScreen> {
                                     ),
                                     if (isMarkedForPeriod) ...[
                                       const SizedBox(height: 4),
+                                      Text(
+                                        '📊 ${record.presentCount} Present • ${record.absentCount} Absent',
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                                      ),
+                                      const SizedBox(height: 2),
                                       if (ackStatus == 'acknowledged')
-                                        const Text('✓ Acknowledged by Faculty', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.presentGreen))
+                                        Text('✓ Acknowledged by ${record.facultyAcknowledgedBy ?? "Faculty"}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.presentGreen))
                                       else if (ackStatus == 'rejected')
                                         Text('⚠️ Discrepancy: ${record.facultyRejectionReason ?? ""}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.absentRed))
                                       else
-                                        const Text('⏳ Dispatched • Awaiting Faculty Ack', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
+                                        const Text('✓ Saved by CR (Official Record)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0D9488))),
                                     ],
                                   ],
                                 ),

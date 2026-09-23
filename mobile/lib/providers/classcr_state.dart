@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -243,7 +244,47 @@ class ClassCRState extends ChangeNotifier {
       );
     }
 
+    await _loadLocalAttendanceCache();
     _checkBackendAndLoad();
+  }
+
+  Future<void> _saveLocalAttendanceCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final recordsList = _periodRecords.values.map((r) => r.toJson()).toList();
+      await prefs.setString('classcr_cached_period_records_$_todayDate', jsonEncode(recordsList));
+      final historyList = _history.map((r) => r.toJson()).toList();
+      await prefs.setString('classcr_cached_history', jsonEncode(historyList));
+    } catch (_) {}
+  }
+
+  Future<void> _loadLocalAttendanceCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final historyRaw = prefs.getString('classcr_cached_history');
+      if (historyRaw != null && _history.isEmpty) {
+        final decoded = jsonDecode(historyRaw) as List;
+        _history = decoded.map((j) => AttendanceRecord.fromJson(j as Map<String, dynamic>)).toList();
+      }
+      final periodsRaw = prefs.getString('classcr_cached_period_records_$_todayDate');
+      if (periodsRaw != null) {
+        final decoded = jsonDecode(periodsRaw) as List;
+        for (final item in decoded) {
+          final rec = AttendanceRecord.fromJson(item as Map<String, dynamic>);
+          if (rec.periodNo != null) {
+            _periodRecords[rec.periodNo!] = rec;
+          }
+        }
+        final todayRec = _periodRecords[_viewingPeriodNo] ?? _periodRecords[1] ?? (_periodRecords.isNotEmpty ? _periodRecords.values.first : null);
+        if (todayRec != null) {
+          _viewingPeriodNo = todayRec.periodNo ?? 1;
+          _currentAttendanceRecord = todayRec;
+          _absentRolls.clear();
+          _absentRolls.addAll(todayRec.absentRolls);
+          _crNotes = todayRec.notes;
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _checkBackendAndLoad() async {
@@ -298,18 +339,28 @@ class ClassCRState extends ChangeNotifier {
         _history = remoteHistory;
       }
       final allPeriods = await ApiService.fetchAllPeriodsAttendance(classId: 'I-MCA-A', date: _todayDate);
-      _periodRecords = allPeriods;
-      final remoteToday = allPeriods[_viewingPeriodNo];
+      if (allPeriods.isNotEmpty) {
+        _periodRecords = allPeriods;
+      }
+      final remoteToday = allPeriods[_viewingPeriodNo] ?? allPeriods[1] ?? (allPeriods.isNotEmpty ? allPeriods.values.first : null);
       if (remoteToday != null) {
+        _viewingPeriodNo = remoteToday.periodNo ?? 1;
         _currentAttendanceRecord = remoteToday;
         _absentRolls.clear();
         _absentRolls.addAll(remoteToday.absentRolls);
         _crNotes = remoteToday.notes;
+      } else if (_periodRecords[_viewingPeriodNo] != null) {
+        final cached = _periodRecords[_viewingPeriodNo]!;
+        _currentAttendanceRecord = cached;
+        _absentRolls.clear();
+        _absentRolls.addAll(cached.absentRolls);
+        _crNotes = cached.notes;
       } else {
         _currentAttendanceRecord = null;
         _absentRolls.clear();
         _crNotes = 'Daily attendance session verified and submitted to advisor.';
       }
+      await _saveLocalAttendanceCache();
     } else {
       await _loadAttendanceForDate(_todayDate);
       _startConnectivityWatcher();
@@ -1173,6 +1224,7 @@ class ClassCRState extends ChangeNotifier {
     } else {
       _history.insert(0, record);
     }
+    await _saveLocalAttendanceCache();
 
 
     await ApiService.submitAttendance(
@@ -1332,7 +1384,7 @@ class ClassCRState extends ChangeNotifier {
   }
 
   // Switch role for full interactive demo
-  void switchRole(UserRole newRole, {String? customName, String? customSubject}) async {
+  void switchRole(UserRole newRole, {String? customName, String? customSubject, String? customStudentId, String? customGender}) async {
     switch (newRole) {
       case UserRole.cr:
         final crDisplayName = customName ?? (_delegation.crName != null ? '${_delegation.crName} (CR)' : 'MUTHUVEL R (CR)');
@@ -1385,14 +1437,18 @@ class ClassCRState extends ChangeNotifier {
         );
         break;
       case UserRole.student:
+        final sName = customName ?? (_students.isNotEmpty ? _students.first.name : 'Student');
+        final sRoll = customStudentId ?? (_students.isNotEmpty ? _students.first.enrollmentNo : '260192');
+        final sGender = customGender ?? (_students.isNotEmpty ? (_students.first.isFemale ? 'F' : 'M') : 'M');
         _currentUser = AppUser(
           id: 'user_stu_1',
-          name: customName ?? 'DHIVYALAKSHMI H',
+          name: sName,
           email: 'student@classcr.edu',
           role: UserRole.student,
           classId: 'I-MCA-A',
-          studentId: '260311',
+          studentId: sRoll,
           department: 'MCA',
+          gender: sGender,
         );
         break;
       case UserRole.admin:
@@ -1506,6 +1562,24 @@ class ClassCRState extends ChangeNotifier {
         );
         buffer.writeln("${st.rollNo}. ${st.name}");
         buffer.writeln("    ${st.enrollmentNo}");
+        buffer.writeln();
+      }
+    }
+
+    // Append Subject-Wise Breakdown for each marked period
+    final markedPeriods = _periodRecords.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    if (markedPeriods.isNotEmpty) {
+      buffer.writeln("━━━━━━━━━━━━━━━━━━━━");
+      buffer.writeln("Subject-Wise Lecture Attendance Today:");
+      buffer.writeln();
+      for (final entry in markedPeriods) {
+        final p = entry.key;
+        final rec = entry.value;
+        final subj = rec.periodSubject ?? getPeriodSubject(p);
+        buffer.writeln("• Period $p ($subj): ${rec.presentCount} Present, ${rec.absentCount} Absent");
+        if (rec.absentRolls.isNotEmpty) {
+          buffer.writeln("  Absentees (Roll): ${rec.absentRolls.join(', ')}");
+        }
         buffer.writeln();
       }
     }

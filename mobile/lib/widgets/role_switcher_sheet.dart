@@ -19,10 +19,8 @@ class RoleSwitcherSheet extends StatelessWidget {
   }
 
   void _promptPasscodeAndSwitch(BuildContext context, UserRole role) {
-    // Student & Admin do not require secret CR passcodes
-    if (role == UserRole.student || role == UserRole.admin) {
-      state.switchRole(role);
-      Navigator.pop(context);
+    if (role == UserRole.student) {
+      _showStudentSwitchDialog(context);
       return;
     }
 
@@ -35,6 +33,8 @@ class RoleSwitcherSheet extends StatelessWidget {
       roleLabel = 'Class Advisor (Mrs. V. Nandhini, AP/CA)';
     } else if (role == UserRole.staff) {
       roleLabel = 'Subject Teacher / Faculty';
+    } else if (role == UserRole.admin) {
+      roleLabel = 'Head of Department (HOD) / Admin';
     }
 
     final controller = TextEditingController();
@@ -130,6 +130,142 @@ class RoleSwitcherSheet extends StatelessWidget {
                   }
                 },
                 child: const Text('Verify & Switch'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showStudentSwitchDialog(BuildContext context) {
+    Student? selectedStudent = state.students.isNotEmpty ? state.students.first : null;
+    final codeController = TextEditingController(text: 'STU2026');
+    String error = '';
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: const Row(
+              children: [
+                Icon(Icons.school_outlined, color: AppColors.primary),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Student Identity & Passcode',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Select your name from the I MCA A class roster:',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.cardBorder),
+                      borderRadius: BorderRadius.circular(10),
+                      color: const Color(0xFFF8FAFC),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<Student>(
+                        isExpanded: true,
+                        value: selectedStudent,
+                        hint: const Text('Select your name'),
+                        items: state.students.map((st) {
+                          return DropdownMenuItem<Student>(
+                            value: st,
+                            child: Text(
+                              '${st.rollNo}. ${st.name} (${st.enrollmentNo})',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            selectedStudent = val;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Enter Student Passcode or your CCR Code:',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: codeController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'Passcode / Code',
+                      hintText: 'STU2026',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.key, size: 18),
+                    ),
+                  ),
+                  if (error.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      error,
+                      style: const TextStyle(fontSize: 12, color: AppColors.absentRed, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () async {
+                  if (selectedStudent == null) {
+                    setDialogState(() => error = 'Please select a student from the roster.');
+                    return;
+                  }
+                  final entered = codeController.text.trim().toUpperCase();
+                  final res = await state.verifyRolePasscode(
+                    classId: 'I-MCA-A',
+                    role: UserRole.student,
+                    code: entered,
+                    rollNo: selectedStudent!.rollNo,
+                  );
+
+                  if (res['valid'] == true) {
+                    Navigator.pop(dialogCtx);
+                    Navigator.pop(context);
+                    state.switchRole(
+                      UserRole.student,
+                      customName: selectedStudent!.name,
+                      customStudentId: selectedStudent!.enrollmentNo,
+                      customGender: selectedStudent!.isFemale ? 'F' : 'M',
+                    );
+                  } else {
+                    setDialogState(() {
+                      error = res['error']?.toString() ?? 'Invalid student passcode!';
+                    });
+                  }
+                },
+                child: const Text('Unlock & Switch'),
               ),
             ],
           );

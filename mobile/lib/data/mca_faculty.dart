@@ -230,10 +230,7 @@ int? getActivePeriodNo() {
       return p.periodNo;
     }
   }
-  // After all periods: return last period
-  final lastEnd = _parseTimeToday(kMcaPeriodTimings.last.endTime);
-  if (now.isAfter(lastEnd)) return kMcaPeriodTimings.last.periodNo;
-  // Before first period: return 1
+  // Default to Period 1 (official daily class lecture) outside scheduled class hours
   return 1;
 }
 
