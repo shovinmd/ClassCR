@@ -746,11 +746,34 @@ class StudentPortalScreen extends StatelessWidget {
 
   void _showStudentPickerDialog(BuildContext context) {
     Student? selected = state.students.isNotEmpty ? state.students.first : null;
+    final codeController = TextEditingController();
+    String error = '';
 
     showDialog(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
+          void updateFromInput(String val) {
+            final trimmed = val.trim().toUpperCase();
+            if (trimmed.isEmpty) return;
+            final match = state.students.cast<Student?>().firstWhere(
+              (s) => s != null && (
+                s.rollNo.toString() == trimmed ||
+                s.code.toUpperCase() == trimmed ||
+                'CCR-${s.rollNo}' == trimmed ||
+                'CCR-${s.rollNo.toString().padLeft(4, '0')}' == trimmed ||
+                s.enrollmentNo.toUpperCase() == trimmed
+              ),
+              orElse: () => null,
+            );
+            if (match != null) {
+              setDialogState(() {
+                selected = match;
+                error = '';
+              });
+            }
+          }
+
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             title: const Row(
@@ -759,7 +782,7 @@ class StudentPortalScreen extends StatelessWidget {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Select Student to View',
+                    'Select Student Portal',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -771,10 +794,28 @@ class StudentPortalScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Select student name from I MCA A class roster:',
+                    'Enter your Roll Number (1–52) or CCR Code:',
                     style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                   ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: codeController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'Roll No or CCR Code',
+                      hintText: 'e.g. 13 or CCR-0013',
+                      prefixIcon: Icon(Icons.pin, size: 20),
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onChanged: updateFromInput,
+                  ),
                   const SizedBox(height: 12),
+                  const Text(
+                    'Or select from class roster:',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -800,11 +841,62 @@ class StudentPortalScreen extends StatelessWidget {
                         onChanged: (val) {
                           setDialogState(() {
                             selected = val;
+                            if (val != null) {
+                              codeController.text = val.rollNo.toString();
+                              error = '';
+                            }
                           });
                         },
                       ),
                     ),
                   ),
+                  if (selected != null) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            selected!.isFemale ? Icons.female : Icons.male,
+                            color: AppColors.presentGreen,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  selected!.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Color(0xFF065F46),
+                                  ),
+                                ),
+                                Text(
+                                  'Roll #${selected!.rollNo} • Code: ${selected!.code}',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF047857)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (error.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      error,
+                      style: const TextStyle(fontSize: 12, color: AppColors.absentRed, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -821,7 +913,22 @@ class StudentPortalScreen extends StatelessWidget {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () {
+                onPressed: () async {
+                  final entered = codeController.text.trim().toUpperCase();
+                  if (entered.isNotEmpty) {
+                    final res = await state.verifyRolePasscode(
+                      classId: 'I-MCA-A',
+                      role: UserRole.student,
+                      code: entered,
+                      rollNo: selected?.rollNo,
+                    );
+                    if (res['valid'] != true) {
+                      setDialogState(() {
+                        error = res['error']?.toString() ?? 'Invalid Roll No or CCR Code.';
+                      });
+                      return;
+                    }
+                  }
                   if (selected == null) return;
                   Navigator.pop(dialogCtx);
                   state.switchRole(

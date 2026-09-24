@@ -3,12 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
+import '../../models/models.dart';
 import '../../providers/classcr_state.dart';
 
-class ReportScreen extends StatelessWidget {
+class ReportScreen extends StatefulWidget {
   final ClassCRState state;
 
   const ReportScreen({super.key, required this.state});
+
+  @override
+  State<ReportScreen> createState() => _ReportScreenState();
+}
+
+class _ReportScreenState extends State<ReportScreen> {
+  // Default to Names Only as requested by user for fast WhatsApp sharing
+  bool _namesOnly = true;
 
   Future<void> _shareOnWhatsApp(BuildContext context, String reportText) async {
     // 1. Always copy report to clipboard first so the user has it ready
@@ -59,7 +68,8 @@ class ReportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reportText = state.generateSmartReportText();
+    final state = widget.state;
+    final reportText = state.generateSmartReportText(namesOnly: _namesOnly);
     final dailyRec = state.dailyClassAttendanceRecord ?? state.periodRecords[1] ?? state.currentAttendanceRecord;
     final absentees = (dailyRec != null ? dailyRec.absentRolls : state.absentRolls.toList())..sort();
     final displayTotal = dailyRec?.totalStudents ?? state.totalCount;
@@ -82,8 +92,10 @@ class ReportScreen extends StatelessWidget {
             onPressed: () {
               Clipboard.setData(ClipboardData(text: reportText));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('📋 Report copied to clipboard! Ready to paste.'),
+                SnackBar(
+                  content: Text(_namesOnly
+                      ? '📋 Absentee names copied to clipboard!'
+                      : '📋 Official report copied to clipboard!'),
                   backgroundColor: AppColors.primary,
                 ),
               );
@@ -125,7 +137,7 @@ class ReportScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Formatted according to advisor requirements for I MCA (Period 1 Class Record)',
+                          'Formatted for I MCA (Period 1 Class Record)',
                           style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],
@@ -135,16 +147,114 @@ class ReportScreen extends StatelessWidget {
               ),
             ),
 
+            const SizedBox(height: 16),
+
+            // FORMAT TOGGLE: Names Only vs Detailed
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _namesOnly = true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _namesOnly ? Colors.white : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: _namesOnly
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.person_pin_outlined,
+                              size: 18,
+                              color: _namesOnly ? const Color(0xFF0D9488) : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Names Only (WhatsApp)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: _namesOnly ? FontWeight.bold : FontWeight.w500,
+                                color: _namesOnly ? const Color(0xFF0F172A) : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _namesOnly = false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: !_namesOnly ? Colors.white : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: !_namesOnly
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.article_outlined,
+                              size: 18,
+                              color: !_namesOnly ? AppColors.primary : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Detailed Report',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: !_namesOnly ? FontWeight.bold : FontWeight.w500,
+                                color: !_namesOnly ? const Color(0xFF0F172A) : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 18),
 
-            // REPORT PREVIEW CARD (Matches exact prompt format)
+            // REPORT PREVIEW CARD
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+                border: Border.all(
+                  color: _namesOnly ? const Color(0xFF99F6E4) : const Color(0xFFCBD5E1),
+                  width: 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.04),
@@ -153,132 +263,12 @@ class ReportScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Attendance Report',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.deepBlue),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFFCD34D)),
-                        ),
-                        child: const Text(
-                          '👑 Period 1: Official Class Record',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Text(
-                    'I MCA A — MVIT',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary),
-                  ),
-                  Text(
-                    'Date: ${state.formattedTodayDate}',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFBFDBFE)),
-                        ),
-                        child: Text(
-                          'Marked by: ${dailyRec?.markedByName ?? state.currentAttendanceRecord?.markedByName ?? state.currentUser.name} (${dailyRec?.markedByRole ?? state.currentAttendanceRecord?.markedByRole ?? state.currentUser.roleDisplayName})',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
-                        ),
-                      ),
-                      if (dailyRec?.lastModifiedBy != null && dailyRec!.lastModifiedBy!.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFFA7F3D0)),
-                          ),
-                          child: Text(
-                            'Advisor Approved: ${dailyRec.lastModifiedBy}',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
-                          ),
-                        ),
-                    ],
-                  ),
-
-                  const Divider(height: 24, thickness: 1),
-
-                  // Counts
-                  _buildReportLine('Total Students:', '$displayTotal'),
-                  _buildReportLine('Present:', '$displayPresent', color: AppColors.presentGreen),
-                  _buildReportLine('Absent:', '$displayAbsent', color: AppColors.absentRed),
-
-                  const Divider(height: 24, thickness: 1),
-
-                  // Absent students section
-                  const Text(
-                    'Absent Students:',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (absentees.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'None! 100% Attendance.',
-                        style: TextStyle(color: AppColors.presentGreen, fontWeight: FontWeight.bold),
-                      ),
-                    )
-                  else
-                    ...absentees.map((rNo) {
-                      final st = state.students.firstWhere((s) => s.rollNo == rNo);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${st.rollNo}. ${st.name}',
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(left: 18, top: 1),
-                              child: Text(
-                                st.enrollmentNo,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                ],
-              ),
+              child: _namesOnly
+                  ? _buildNamesOnlyPreview(state, absentees, displayTotal, displayAbsent)
+                  : _buildDetailedPreview(state, dailyRec, absentees, displayTotal, displayPresent, displayAbsent),
             ),
 
-            if (state.periodRecords.isNotEmpty) ...[
+            if (state.periodRecords.isNotEmpty && !_namesOnly) ...[
               const SizedBox(height: 18),
               Container(
                 width: double.infinity,
@@ -379,9 +369,9 @@ class ReportScreen extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () => _shareOnWhatsApp(context, reportText),
                     icon: const Icon(Icons.send_rounded, size: 20),
-                    label: const Text(
-                      'Share via WhatsApp',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    label: Text(
+                      _namesOnly ? 'Share Names to WhatsApp' : 'Share Full Report to WhatsApp',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF25D366),
@@ -402,14 +392,16 @@ class ReportScreen extends StatelessWidget {
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: reportText));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('📋 Report copied to clipboard!'),
+                            SnackBar(
+                              content: Text(_namesOnly
+                                  ? '📋 Absentee names copied to clipboard!'
+                                  : '📋 Official report copied to clipboard!'),
                               backgroundColor: AppColors.primary,
                             ),
                           );
                         },
                         icon: const Icon(Icons.copy, size: 18),
-                        label: const Text('Copy Report'),
+                        label: Text(_namesOnly ? 'Copy Names' : 'Copy Report'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: AppColors.primary),
@@ -427,7 +419,7 @@ class ReportScreen extends StatelessWidget {
                           Clipboard.setData(ClipboardData(text: reportText));
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('📤 Report prepared for sharing! (Copied to clipboard)'),
+                              content: Text('📤 Report copied to clipboard for sharing!'),
                             ),
                           );
                         },
@@ -447,6 +439,233 @@ class ReportScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  // CLEAN NAMES-ONLY PREVIEW
+  Widget _buildNamesOnlyPreview(
+    ClassCRState state,
+    List<int> absentees,
+    int displayTotal,
+    int displayAbsent,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Absent Students',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFCCFBF1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF5EEAD4)),
+              ),
+              child: const Text(
+                '💬 Names Only Mode',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
+              ),
+            ),
+          ],
+        ),
+        Text(
+          'I MCA A — ${state.formattedTodayDate}',
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0D9488)),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Total Absent: $displayAbsent / $displayTotal',
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.absentRed),
+        ),
+        const Divider(height: 24, thickness: 1),
+        if (absentees.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'None! 100% Attendance 🎉',
+              style: TextStyle(color: AppColors.presentGreen, fontWeight: FontWeight.bold),
+            ),
+          )
+        else
+          ...absentees.asMap().entries.map((entry) {
+            final idx = entry.key + 1;
+            final rNo = entry.value;
+            final st = state.students.firstWhere(
+              (s) => s.rollNo == rNo,
+              orElse: () => Student(rollNo: rNo, enrollmentNo: 'N/A', name: 'Student $rNo'),
+            );
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '$idx',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      st.name,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1E293B)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  // DETAILED OFFICIAL PREVIEW
+  Widget _buildDetailedPreview(
+    ClassCRState state,
+    dynamic dailyRec,
+    List<int> absentees,
+    int displayTotal,
+    int displayPresent,
+    int displayAbsent,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Attendance Report',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.deepBlue),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFFCD34D)),
+              ),
+              child: const Text(
+                '👑 Period 1: Official Class Record',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+              ),
+            ),
+          ],
+        ),
+        const Text(
+          'I MCA A — MVIT',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary),
+        ),
+        Text(
+          'Date: ${state.formattedTodayDate}',
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Text(
+                'Marked by: ${dailyRec?.markedByName ?? state.currentAttendanceRecord?.markedByName ?? state.currentUser.name} (${dailyRec?.markedByRole ?? state.currentAttendanceRecord?.markedByRole ?? state.currentUser.roleDisplayName})',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+              ),
+            ),
+            if (dailyRec?.lastModifiedBy != null && dailyRec!.lastModifiedBy!.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                ),
+                child: Text(
+                  'Advisor Approved: ${dailyRec.lastModifiedBy}',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.presentGreen),
+                ),
+              ),
+          ],
+        ),
+
+        const Divider(height: 24, thickness: 1),
+
+        // Counts
+        _buildReportLine('Total Students:', '$displayTotal'),
+        _buildReportLine('Present:', '$displayPresent', color: AppColors.presentGreen),
+        _buildReportLine('Absent:', '$displayAbsent', color: AppColors.absentRed),
+
+        const Divider(height: 24, thickness: 1),
+
+        // Absent students section
+        const Text(
+          'Absent Students:',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 12),
+
+        if (absentees.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'None! 100% Attendance.',
+              style: TextStyle(color: AppColors.presentGreen, fontWeight: FontWeight.bold),
+            ),
+          )
+        else
+          ...absentees.map((rNo) {
+            final st = state.students.firstWhere((s) => s.rollNo == rNo);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${st.rollNo}. ${st.name}',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 18, top: 1),
+                    child: Text(
+                      st.enrollmentNo,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+      ],
     );
   }
 

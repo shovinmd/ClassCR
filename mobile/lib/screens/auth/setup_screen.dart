@@ -906,7 +906,7 @@ class _SetupScreenState extends State<SetupScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Selected: #${_selectedStudent!.rollNo.toString().padLeft(2, '0')} ${_selectedStudent!.name}\nNow enter this student\'s matching ClassCR code in Step 4 below to log in.',
+                                    'Selected: #${_selectedStudent!.rollNo.toString().padLeft(2, '0')} ${_selectedStudent!.name}\nEnter Roll Number (${_selectedStudent!.rollNo}) or CCR Code (${_selectedStudent!.code}) below to log in.',
                                     style: const TextStyle(fontSize: 12, color: Color(0xFF1D4ED8), fontWeight: FontWeight.bold),
                                   ),
                                 ),
@@ -944,7 +944,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       decoration: InputDecoration(
                         labelText: _selectedRole == UserRole.student
                             ? (_selectedStudent != null
-                                ? 'Matching ClassCR Code for ${_selectedStudent!.name}'
+                                ? 'Roll No or CCR Code for ${_selectedStudent!.name}'
                                 : 'Select student name above first')
                             : (_selectedRole == UserRole.staff
                                 ? (_selectedFaculty != null
@@ -953,7 +953,7 @@ class _SetupScreenState extends State<SetupScreen> {
                                 : 'Passcode for ${_getRoleTitle(_selectedRole)}'),
                         hintText: _selectedRole == UserRole.student
                             ? (_selectedStudent != null
-                                ? 'Enter assigned code (e.g. ${_selectedStudent!.code} or ${_selectedStudent!.enrollmentNo})'
+                                ? 'e.g. ${_selectedStudent!.rollNo} or ${_selectedStudent!.code}'
                                 : 'Choose your name from roster above first')
                             : (_selectedRole == UserRole.staff
                                 ? (_selectedFaculty != null
@@ -986,7 +986,7 @@ class _SetupScreenState extends State<SetupScreen> {
                         Expanded(
                           child: Text(
                             _selectedRole == UserRole.student
-                                ? 'Use your assigned ClassCR code (e.g. CCR-0001 to CCR-0052) or class code'
+                                ? 'Enter your Roll Number (1–52) or CCR code (e.g. CCR-0001 to CCR-0052)'
                                 : (_selectedRole == UserRole.staff
                                     ? 'Use your assigned teacher code (e.g. OS2026, MAT2026, DT2026, SE2026) or STAFF2026'
                                     : 'Authorized code required to activate ${_getRoleTitle(_selectedRole)}'),

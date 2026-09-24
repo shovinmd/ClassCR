@@ -767,8 +767,14 @@ class ClassCRState extends ChangeNotifier {
         final expectedCode = student.code.toUpperCase();
         final expectedEnrollment = student.enrollmentNo.toUpperCase();
         final expectedCcr = 'CCR-${student.rollNo.toString().padLeft(4, '0')}';
+        final expectedRoll = student.rollNo.toString();
 
-        if (entered == expectedCode || entered == expectedEnrollment || entered == expectedCcr || entered == 'STU2026') {
+        if (entered == expectedRoll ||
+            entered == expectedCode ||
+            entered == expectedEnrollment ||
+            entered == expectedCcr ||
+            entered == 'CCR-$expectedRoll' ||
+            entered == 'STU2026') {
           return {
             'valid': true,
             'role': 'student',
@@ -782,16 +788,18 @@ class ClassCRState extends ChangeNotifier {
         } else {
           return {
             'valid': false,
-            'error': 'Code mismatch: The entered code does not match ${student.name}. Please enter your assigned ClassCR code (${student.code}) to verify.',
+            'error': 'Code mismatch: Please enter Roll No (${student.rollNo}) or ClassCR code (${student.code}) to verify.',
           };
         }
       } else {
         // Without rollNo (from switcher sheet)
         final student = _students.cast<Student?>().firstWhere(
               (s) => s != null && (
+                s.rollNo.toString() == entered ||
                 s.code.toUpperCase() == entered ||
                 s.enrollmentNo.toUpperCase() == entered ||
-                'CCR-${s.rollNo.toString().padLeft(4, '0')}' == entered
+                'CCR-${s.rollNo.toString().padLeft(4, '0')}' == entered ||
+                'CCR-${s.rollNo}' == entered
               ),
               orElse: () => null,
             );
@@ -822,7 +830,7 @@ class ClassCRState extends ChangeNotifier {
         }
         return {
           'valid': false,
-          'error': 'Invalid student CCR passcode or enrollment number.',
+          'error': 'Invalid student Roll Number (1–52) or CCR code.',
         };
       }
     }
@@ -1560,7 +1568,8 @@ class ClassCRState extends ChangeNotifier {
   }
 
   // Generate Smart Report formatted text
-  String generateSmartReportText() {
+  // Generate Smart Report formatted text
+  String generateSmartReportText({bool namesOnly = false}) {
     // Period 1 is the official daily class attendance record
     final primaryRecord = dailyClassAttendanceRecord ?? _periodRecords[1] ?? _rawCurrentAttendanceRecord;
     final sortedAbsentees = (primaryRecord != null ? primaryRecord.absentRolls : _absentRolls.toList())..sort();
@@ -1572,6 +1581,28 @@ class ClassCRState extends ChangeNotifier {
     final advisor = _delegation.advisorName;
 
     final buffer = StringBuffer();
+
+    // Clean Names-Only Format for fast WhatsApp posting (requested by user)
+    if (namesOnly) {
+      buffer.writeln("Absent Students (I MCA A - ${_formatDateForReport(_todayDate)}):");
+      buffer.writeln("Total Absent: $pAbsent / $pTotal");
+      buffer.writeln();
+      if (sortedAbsentees.isEmpty) {
+        buffer.writeln("None! 100% Attendance 🎉");
+      } else {
+        int i = 1;
+        for (final rNo in sortedAbsentees) {
+          final st = _students.firstWhere(
+            (s) => s.rollNo == rNo,
+            orElse: () => Student(rollNo: rNo, enrollmentNo: 'N/A', name: 'Student $rNo'),
+          );
+          buffer.writeln("$i. ${st.name}");
+          i++;
+        }
+      }
+      return buffer.toString().trim();
+    }
+
     buffer.writeln("Attendance Report (Period 1 - Official Class Record)");
     buffer.writeln("I MCA A — MVIT");
     buffer.writeln("Date: ${_formatDateForReport(_todayDate)}");

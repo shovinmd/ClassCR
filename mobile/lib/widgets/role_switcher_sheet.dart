@@ -141,11 +141,34 @@ class RoleSwitcherSheet extends StatelessWidget {
 
   void _showStudentSwitchDialog(BuildContext context) {
     Student? selectedStudent = state.students.isNotEmpty ? state.students.first : null;
+    final codeController = TextEditingController();
+    String error = '';
 
     showDialog(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
+          void updateFromInput(String val) {
+            final trimmed = val.trim().toUpperCase();
+            if (trimmed.isEmpty) return;
+            final match = state.students.cast<Student?>().firstWhere(
+              (s) => s != null && (
+                s.rollNo.toString() == trimmed ||
+                s.code.toUpperCase() == trimmed ||
+                'CCR-${s.rollNo}' == trimmed ||
+                'CCR-${s.rollNo.toString().padLeft(4, '0')}' == trimmed ||
+                s.enrollmentNo.toUpperCase() == trimmed
+              ),
+              orElse: () => null,
+            );
+            if (match != null) {
+              setDialogState(() {
+                selectedStudent = match;
+                error = '';
+              });
+            }
+          }
+
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             title: const Row(
@@ -154,7 +177,7 @@ class RoleSwitcherSheet extends StatelessWidget {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Select Student to View',
+                    'Student Verification',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -166,10 +189,28 @@ class RoleSwitcherSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Select your name from the I MCA A class roster to view attendance records:',
+                    'Enter your Roll Number (1–52) or CCR Code:',
                     style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                   ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: codeController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'Roll No or CCR Code',
+                      hintText: 'e.g. 13 or CCR-0013',
+                      prefixIcon: Icon(Icons.pin, size: 20),
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onChanged: updateFromInput,
+                  ),
                   const SizedBox(height: 12),
+                  const Text(
+                    'Or select your name from class roster:',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -195,6 +236,10 @@ class RoleSwitcherSheet extends StatelessWidget {
                         onChanged: (val) {
                           setDialogState(() {
                             selectedStudent = val;
+                            if (val != null) {
+                              codeController.text = val.rollNo.toString();
+                              error = '';
+                            }
                           });
                         },
                       ),
@@ -230,7 +275,7 @@ class RoleSwitcherSheet extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'Roll #${selectedStudent!.rollNo} • Register: ${selectedStudent!.enrollmentNo}',
+                                  'Roll #${selectedStudent!.rollNo} • Code: ${selectedStudent!.code}',
                                   style: const TextStyle(fontSize: 11, color: Color(0xFF047857)),
                                 ),
                               ],
@@ -238,6 +283,13 @@ class RoleSwitcherSheet extends StatelessWidget {
                           ),
                         ],
                       ),
+                    ),
+                  ],
+                  if (error.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      error,
+                      style: const TextStyle(fontSize: 12, color: AppColors.absentRed, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ],
@@ -250,13 +302,28 @@ class RoleSwitcherSheet extends StatelessWidget {
               ),
               ElevatedButton.icon(
                 icon: const Icon(Icons.check_circle_outline, size: 18),
-                label: const Text('View Attendance'),
+                label: const Text('Verify & Switch'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.presentGreen,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () {
+                onPressed: () async {
+                  final entered = codeController.text.trim().toUpperCase();
+                  if (entered.isNotEmpty) {
+                    final res = await state.verifyRolePasscode(
+                      classId: 'I-MCA-A',
+                      role: UserRole.student,
+                      code: entered,
+                      rollNo: selectedStudent?.rollNo,
+                    );
+                    if (res['valid'] != true) {
+                      setDialogState(() {
+                        error = res['error']?.toString() ?? 'Invalid Roll No or CCR Code.';
+                      });
+                      return;
+                    }
+                  }
                   if (selectedStudent == null) return;
                   Navigator.pop(dialogCtx);
                   Navigator.pop(context);
