@@ -1698,6 +1698,179 @@ class ClassCRState extends ChangeNotifier {
     return '${displayHour.toString().padLeft(2, '0')}:$minute $period';
   }
 
+  /// Fetches all attendance records for a given month (e.g. "2026-09")
+  Future<List<AttendanceRecord>> fetchMonthRecords(String yearMonth) async {
+    final remote = await ApiService.fetchMonthAttendance(
+      classId: _currentUser.classId ?? 'I-MCA-A',
+      yearMonth: yearMonth,
+    );
+    // Merge with any in-memory history/drafts
+    final Map<String, AttendanceRecord> recordMap = {};
+    for (final r in remote) {
+      recordMap[r.id] = r;
+    }
+    for (final r in _history) {
+      if (r.date.startsWith(yearMonth)) {
+        recordMap[r.id] = r;
+      }
+    }
+    for (final r in _periodRecords.values) {
+      if (r.date.startsWith(yearMonth)) {
+        recordMap[r.id] = r;
+      }
+    }
+    final sorted = recordMap.values.toList()
+      ..sort((a, b) {
+        final dCmp = a.date.compareTo(b.date);
+        if (dCmp != 0) return dCmp;
+        return (a.periodNo ?? 1).compareTo(b.periodNo ?? 1);
+      });
+    return sorted;
+  }
+
+  /// Deletes attendance records for a specific month (Month-end rollover after saving Excel hard copy)
+  Future<bool> deleteMonthAttendance(String yearMonth) async {
+    final success = await ApiService.deleteAttendanceForMonth(
+      classId: _currentUser.classId ?? 'I-MCA-A',
+      yearMonth: yearMonth,
+    );
+
+    // Remove from in-memory history
+    _history.removeWhere((r) => r.date.startsWith(yearMonth));
+
+    // If active day is in that month, reset active period records
+    if (_todayDate.startsWith(yearMonth)) {
+      _periodRecords.clear();
+      _currentAttendanceRecord = null;
+      _absentRolls.clear();
+    }
+
+    await _saveLocalAttendanceCache();
+    notifyListeners();
+    return success;
+  }
+
+  /// Generates RFC-compliant CSV string ready to open directly in Microsoft Excel or Google Sheets
+  String generateMonthlyExcelCsv({
+    required List<AttendanceRecord> records,
+    String? subjectFilter,
+    required String yearMonth,
+  }) {
+    final buffer = StringBuffer();
+    final isSpecificSubject = subjectFilter != null && subjectFilter.isNotEmpty && subjectFilter != 'ALL';
+
+    // Header info
+    buffer.writeln('"MANAKULA VINAYAGAR INSTITUTE OF TECHNOLOGY"');
+    buffer.writeln('"DEPARTMENT OF COMPUTER APPLICATIONS - MCA"');
+    buffer.writeln('"MONTHLY SUBJECT ATTENDANCE REGISTER - $yearMonth"');
+    buffer.writeln('"Class: I MCA A","Batch: 2026-2028","Class Advisor: Mrs. V. Nandhini, AP/CA"');
+    if (isSpecificSubject) {
+      final fac = getFacultyForSubject(subjectFilter);
+      buffer.writeln('"Subject: $subjectFilter","Faculty: ${fac?.name ?? "N/A"}"');
+    }
+    buffer.writeln();
+
+    // Filter relevant records
+    final relevantRecords = isSpecificSubject
+        ? records.where((r) => (r.periodSubject ?? '').toUpperCase().contains(subjectFilter.toUpperCase())).toList()
+        : records;
+
+    final totalConducted = relevantRecords.length;
+
+    // Table Header
+    buffer.writeln('"Roll No","Enrollment No","Student Name","Gender","Classes Conducted","Classes Attended","Classes Absent","Attendance %","75% Criteria Status"');
+
+    for (final student in _students) {
+      int attended = 0;
+      int absent = 0;
+
+      for (final rec in relevantRecords) {
+        if (rec.absentRolls.contains(student.rollNo)) {
+          absent++;
+        } else {
+          attended++;
+        }
+      }
+
+      final double pct = totalConducted > 0 ? (attended / totalConducted) * 100 : 100.0;
+      final String status = pct >= 75.0 ? 'ELIGIBLE' : 'SHORTAGE (<75%)';
+      buffer.writeln('${student.rollNo},"${student.enrollmentNo}","${student.name}","${student.gender}",$totalConducted,$attended,$absent,"${pct.toStringAsFixed(1)}%","$status"');
+    }
+
+    buffer.writeln();
+    buffer.writeln('"Total Students: 52","Total Sessions Held: $totalConducted","Report Generated On: ${_nowTimeStr()}, $formattedTodayDate"');
+    buffer.writeln('"Class Representative (CR)","Assistant CR","Subject In-Charge","Class Advisor","Head of Department (HOD)"');
+
+    return buffer.toString();
+  }
+
+  /// Generates the official printable Department Hard Copy register text
+  String generateMonthlyHardCopyText({
+    required List<AttendanceRecord> records,
+    String? subjectFilter,
+    required String yearMonth,
+  }) {
+    final buffer = StringBuffer();
+    final isSpecificSubject = subjectFilter != null && subjectFilter.isNotEmpty && subjectFilter != 'ALL';
+    final fac = isSpecificSubject ? getFacultyForSubject(subjectFilter) : null;
+
+    final relevantRecords = isSpecificSubject
+        ? records.where((r) => (r.periodSubject ?? '').toUpperCase().contains(subjectFilter.toUpperCase())).toList()
+        : records;
+
+    final totalConducted = relevantRecords.length;
+
+    buffer.writeln("================================================================================");
+    buffer.writeln("                    MANAKULA VINAYAGAR INSTITUTE OF TECHNOLOGY                  ");
+    buffer.writeln("                     Department of Computer Applications (MCA)                  ");
+    buffer.writeln("                    OFFICIAL MONTHLY ATTENDANCE REGISTER - $yearMonth           ");
+    buffer.writeln("================================================================================");
+    buffer.writeln("Class: I MCA A              Batch: 2026-2028                Hall No: 408");
+    if (isSpecificSubject) {
+      buffer.writeln("Subject: $subjectFilter                 Subject Code: ${fac?.subjectCode ?? 'N/A'}");
+      buffer.writeln("Faculty In-Charge: ${fac?.name ?? 'Subject Teacher'}");
+    } else {
+      buffer.writeln("Subject: MASTER REGISTER (All Subjects & Labs)");
+    }
+    buffer.writeln("Class Advisor: Mrs. V. Nandhini, AP/CA      Total Sessions Conducted: $totalConducted");
+    buffer.writeln("================================================================================");
+    buffer.writeln("Roll  Enrollment  Student Name                  Attended / Held    %      Status");
+    buffer.writeln("--------------------------------------------------------------------------------");
+
+    for (final student in _students) {
+      int attended = 0;
+      for (final rec in relevantRecords) {
+        if (!rec.absentRolls.contains(student.rollNo)) {
+          attended++;
+        }
+      }
+      final double pct = totalConducted > 0 ? (attended / totalConducted) * 100 : 100.0;
+      final String status = pct >= 75.0 ? 'ELIGIBLE' : 'SHORTAGE';
+
+      final rollStr = student.rollNo.toString().padRight(4);
+      final enrStr = student.enrollmentNo.padRight(12);
+      final nameStr = (student.name.length > 28 ? student.name.substring(0, 28) : student.name).padRight(30);
+      final ratioStr = '$attended / $totalConducted'.padRight(18);
+      final pctStr = '${pct.toStringAsFixed(1)}%'.padRight(7);
+
+      buffer.writeln("$rollStr$enrStr$nameStr$ratioStr$pctStr$status");
+    }
+
+    buffer.writeln("================================================================================");
+    buffer.writeln("Total Students: 52       Generated: $formattedTodayDate (${_nowTimeStr()})");
+    buffer.writeln();
+    buffer.writeln("Signatures for Official Department Records:");
+    buffer.writeln();
+    buffer.writeln("CR Signature: _____________________    Asst. CR Signature: _____________________");
+    buffer.writeln();
+    buffer.writeln("Subject Faculty: __________________    Class Advisor: __________________________");
+    buffer.writeln();
+    buffer.writeln("Head of Department (HOD): __________________________");
+    buffer.writeln("================================================================================");
+
+    return buffer.toString();
+  }
+
   @override
   void dispose() {
     _stopRealtimeTimer();

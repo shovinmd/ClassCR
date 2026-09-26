@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../models/models.dart';
 import '../../providers/classcr_state.dart';
+import 'monthly_register_screen.dart';
 
 class ReportScreen extends StatefulWidget {
   final ClassCRState state;
@@ -86,6 +87,16 @@ class _ReportScreenState extends State<ReportScreen> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.table_chart_outlined, color: Color(0xFF0D9488)),
+            tooltip: 'Monthly Register & Excel Export',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => MonthlyRegisterScreen(state: widget.state)),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.copy),
             tooltip: 'Copy Report',

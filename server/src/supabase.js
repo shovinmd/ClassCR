@@ -357,6 +357,67 @@ const db = {
     return true;
   },
 
+  // Delete attendance records for a specific month (Month-End rollover after downloading Excel)
+  async deleteAttendanceForMonth(classId, yearMonth) {
+    const ym = yearMonth || new Date().toISOString().slice(0, 7);
+    const startDate = `${ym}-01`;
+    const endDate = `${ym}-31`;
+
+    if (classId) {
+      memoryStore.attendanceRecords = memoryStore.attendanceRecords.filter(r => 
+        r.classId !== classId || !(r.date >= startDate && r.date <= endDate)
+      );
+      memoryStore.reports = memoryStore.reports.filter(r => 
+        r.classId !== classId || !(r.date >= startDate && r.date <= endDate)
+      );
+    } else {
+      memoryStore.attendanceRecords = memoryStore.attendanceRecords.filter(r => 
+        !(r.date >= startDate && r.date <= endDate)
+      );
+      memoryStore.reports = memoryStore.reports.filter(r => 
+        !(r.date >= startDate && r.date <= endDate)
+      );
+    }
+
+    try {
+      let query = supabase.from('attendance_records').delete().gte('date', startDate).lte('date', endDate);
+      if (classId) query = query.eq('class_id', classId);
+      const res = await query;
+      if (res.error) {
+        console.warn('Supabase deleteAttendanceForMonth warning:', res.error.message);
+      } else {
+        console.log(`🧹 Deleted attendance records in Supabase for ${classId || 'all'} in ${ym}`);
+      }
+    } catch (e) {
+      console.warn('Could not delete attendance records for month in Supabase:', e.message);
+    }
+    return true;
+  },
+
+  // Get attendance records for a specific month (for Excel report)
+  async getMonthAttendance(classId, yearMonth) {
+    const ym = yearMonth || new Date().toISOString().slice(0, 7);
+    const startDate = `${ym}-01`;
+    const endDate = `${ym}-31`;
+    try {
+      let query = supabase
+        .from('attendance_records')
+        .select('*')
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true })
+        .order('period_no', { ascending: true });
+      if (classId) query = query.eq('class_id', classId);
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data.map(mapAttendance);
+      }
+    } catch (_) {}
+    return memoryStore.attendanceRecords.filter(r => 
+      (!classId || r.classId === classId) && (r.date >= startDate && r.date <= endDate)
+    );
+  },
+
   // Find user by email
   async getUserByEmail(email) {
     try {

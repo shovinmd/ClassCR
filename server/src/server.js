@@ -218,6 +218,22 @@ app.get('/api/timetable/:day', async (req, res) => {
   res.json({ classId, day, timetable: daySlot });
 });
 
+// Monthly Attendance & Excel Export Endpoints
+app.get('/api/attendance/month/:yearMonth', async (req, res) => {
+  const classId = req.query.classId || 'I-MCA-A';
+  const yearMonth = req.params.yearMonth;
+  const records = await db.getMonthAttendance(classId, yearMonth);
+  res.json({ classId, yearMonth, totalRecords: records.length, records });
+});
+
+// Delete Month Records (Month-end purge after Excel download & hard copy creation)
+app.delete('/api/attendance/month/:yearMonth', async (req, res) => {
+  const classId = req.query.classId || 'I-MCA-A';
+  const yearMonth = req.params.yearMonth;
+  await db.deleteAttendanceForMonth(classId, yearMonth);
+  res.json({ success: true, message: `Attendance records for ${yearMonth} deleted successfully.` });
+});
+
 // Submit Attendance
 app.post('/api/attendance', authenticateToken, async (req, res) => {
   const { classId, date, absentRolls, notes, markedByName, markedByRole } = req.body;

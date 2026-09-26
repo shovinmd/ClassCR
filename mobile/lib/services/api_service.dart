@@ -293,4 +293,44 @@ class ApiService {
   static Future<List<AttendanceRecord>> loadOfflineQueue() async => [];
   static Future<void> clearOfflineQueue() async {}
   static Future<bool> pingBackend() async => true;
+
+  /// Fetch all attendance records for a specific month (e.g. '2026-09')
+  static Future<List<AttendanceRecord>> fetchMonthAttendance({
+    String classId = 'I-MCA-A',
+    required String yearMonth,
+  }) async {
+    try {
+      final startDate = '$yearMonth-01';
+      final endDate = '$yearMonth-31';
+      final url = '$supabaseUrl/rest/v1/attendance_records?select=*&class_id=eq.$classId&date=gte.$startDate&date=lte.$endDate&order=date.asc,period_no.asc';
+      final response = await http
+          .get(Uri.parse(url), headers: _supabaseHeaders)
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final list = (json.decode(response.body) as List)
+            .map((r) => AttendanceRecord.fromJson(r as Map<String, dynamic>))
+            .toList();
+        return list;
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Delete all attendance records for a specific month (Month-End rollover after saving Excel hard copy)
+  static Future<bool> deleteAttendanceForMonth({
+    String classId = 'I-MCA-A',
+    required String yearMonth,
+  }) async {
+    try {
+      final startDate = '$yearMonth-01';
+      final endDate = '$yearMonth-31';
+      final url = '$supabaseUrl/rest/v1/attendance_records?class_id=eq.$classId&date=gte.$startDate&date=lte.$endDate';
+      final response = await http
+          .delete(Uri.parse(url), headers: _supabaseHeaders)
+          .timeout(const Duration(seconds: 8));
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
+  }
 }

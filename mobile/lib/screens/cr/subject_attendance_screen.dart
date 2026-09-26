@@ -3,6 +3,7 @@ import '../../core/theme.dart';
 import '../../data/mca_faculty.dart';
 import '../../models/models.dart';
 import '../../providers/classcr_state.dart';
+import 'monthly_register_screen.dart';
 
 class SubjectAttendanceScreen extends StatefulWidget {
   final ClassCRState state;
@@ -338,6 +339,16 @@ class _SubjectAttendanceScreenState extends State<SubjectAttendanceScreen> {
                 Text(widget.state.formattedTodayDate, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0D9488))),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.table_chart, color: Color(0xFF0D9488)),
+            tooltip: 'Monthly Subject Register & Excel',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => MonthlyRegisterScreen(state: widget.state)),
+              );
+            },
           ),
           if (widget.state.canModifyAttendance)
             PopupMenuButton<String>(

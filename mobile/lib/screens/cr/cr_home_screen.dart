@@ -4,6 +4,7 @@ import '../../models/models.dart';
 import '../../providers/classcr_state.dart';
 import 'mark_attendance_screen.dart';
 import 'report_screen.dart';
+import 'monthly_register_screen.dart';
 
 class CrHomeScreen extends StatelessWidget {
   final ClassCRState state;
@@ -351,7 +352,57 @@ class CrHomeScreen extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 12),
+
+          // Monthly Register & Excel Export Banner
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => MonthlyRegisterScreen(state: state)),
+              );
+            },
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDFA),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF99F6E4)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D9488),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.table_chart, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Monthly Subject Register & Excel Export',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F766E)),
+                        ),
+                        Text(
+                          'Download .csv, print subject hard copy & month-end purge',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF115E59)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Color(0xFF0D9488)),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
 
           // QUICK ANALYTICS CARDS
           Row(
