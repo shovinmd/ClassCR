@@ -203,6 +203,21 @@ app.get('/api/attendance/history', async (req, res) => {
   res.json({ history: records });
 });
 
+// Timetable Endpoints (includes Saturday P2 as LIB)
+app.get('/api/timetable', async (req, res) => {
+  const classId = req.query.classId || 'I-MCA-A';
+  const timetable = await db.getTimetable(classId);
+  res.json({ classId, timetable });
+});
+
+app.get('/api/timetable/:day', async (req, res) => {
+  const classId = req.query.classId || 'I-MCA-A';
+  const day = req.params.day;
+  const daySlot = await db.getTimetableForDay(classId, day);
+  if (!daySlot) return res.status(404).json({ error: 'Timetable day not found' });
+  res.json({ classId, day, timetable: daySlot });
+});
+
 // Submit Attendance
 app.post('/api/attendance', authenticateToken, async (req, res) => {
   const { classId, date, absentRolls, notes, markedByName, markedByRole } = req.body;

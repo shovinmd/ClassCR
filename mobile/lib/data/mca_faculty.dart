@@ -169,6 +169,18 @@ FacultyMember? getFacultyForSubject(String subjectAbb) {
     return kOfficialMcaFaculty[3]; // Ms. M. Tamilmani
   } else if (abb == 'SE') {
     return kOfficialMcaFaculty[4]; // Ms. V. Deepa
+  } else if (abb == 'LIB' || abb.contains('LIBRARY')) {
+    return const FacultyMember(
+      name: 'Central Library / MVIT',
+      designation: 'Librarian / Library Hour',
+      department: 'Central Library',
+      role: 'Library / Self-Study',
+      subject: 'Library / Self-Study Hour',
+      subjectCode: 'LIB',
+      subjectAbb: 'LIB',
+      hallNo: 'Central Library',
+      hours: 1,
+    );
   }
   return null;
 }

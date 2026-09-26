@@ -194,3 +194,99 @@ ON CONFLICT (roll_no) DO UPDATE SET
   ccr_code = EXCLUDED.ccr_code,
   class_id = EXCLUDED.class_id,
   department = EXCLUDED.department;
+
+-- 8. CREATE TIMETABLE TABLE
+-- Official Weekly Timetable Schedule for I MCA A (Batch 2026-2028, Hall 408)
+-- Includes Saturday Period 2 as 'LIB' (Library Hour)
+CREATE TABLE IF NOT EXISTS public.timetable (
+  id TEXT PRIMARY KEY,
+  class_id TEXT NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  day_order INTEGER NOT NULL,
+  period_no INTEGER NOT NULL,
+  period_time TEXT,
+  subject_abb TEXT NOT NULL,
+  subject_name TEXT NOT NULL,
+  faculty_name TEXT NOT NULL,
+  hall_no TEXT DEFAULT '408',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT uq_class_day_period UNIQUE (class_id, day, period_no)
+);
+
+ALTER TABLE public.timetable ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public all access on timetable" ON public.timetable FOR ALL USING (true) WITH CHECK (true);
+
+-- 9. SEED OFFICIAL WEEKLY TIMETABLE
+-- Saturday 2nd lecture is explicitly seeded as 'LIB' (Library Hour)
+INSERT INTO public.timetable (id, class_id, day, day_order, period_no, period_time, subject_abb, subject_name, faculty_name, hall_no)
+VALUES
+  -- Monday
+  ('I-MCA-A-Mon-P1', 'I-MCA-A', 'Monday', 1, 1, '8:50 AM - 9:40 AM', 'OS', 'Operating Systems & Lab', 'Ms. M. Tamilmani, AP/CA', '408'),
+  ('I-MCA-A-Mon-P2', 'I-MCA-A', 'Monday', 1, 2, '9:40 AM - 10:30 AM', 'MAT', 'Mathematical Foundation of CA', 'Dr. S. Sivaramakrishnan, Prof/Maths', '408'),
+  ('I-MCA-A-Mon-P3', 'I-MCA-A', 'Monday', 1, 3, '10:45 AM - 11:35 AM', 'OOPS', 'Object oriented Programming in C++', 'Mrs. V. Nandhini, AP/CA', '408'),
+  ('I-MCA-A-Mon-P4', 'I-MCA-A', 'Monday', 1, 4, '11:35 AM - 12:25 PM', 'MAT', 'Mathematical Foundation of CA', 'Dr. S. Sivaramakrishnan, Prof/Maths', '408'),
+  ('I-MCA-A-Mon-P5', 'I-MCA-A', 'Monday', 1, 5, '1:10 PM - 2:00 PM', 'OOPS', 'Object oriented Programming in C++', 'Mrs. V. Nandhini, AP/CA', '408'),
+  ('I-MCA-A-Mon-P6', 'I-MCA-A', 'Monday', 1, 6, '2:00 PM - 2:50 PM', 'SE', 'Software Engineering', 'Ms. V. Deepa, AP/CA', '408'),
+  ('I-MCA-A-Mon-P7', 'I-MCA-A', 'Monday', 1, 7, '3:00 PM - 3:50 PM', 'DT LAB', 'Database Technology Lab', 'Mrs. K. Shivashankari, AP/CA', 'Lab 2'),
+  ('I-MCA-A-Mon-P8', 'I-MCA-A', 'Monday', 1, 8, '3:50 PM - 4:40 PM', 'DT LAB', 'Database Technology Lab', 'Mrs. K. Shivashankari, AP/CA', 'Lab 2'),
+
+  -- Tuesday
+  ('I-MCA-A-Tue-P1', 'I-MCA-A', 'Tuesday', 2, 1, '8:50 AM - 9:40 AM', 'OOPS', 'Object oriented Programming in C++', 'Mrs. V. Nandhini, AP/CA', '408'),
+  ('I-MCA-A-Tue-P2', 'I-MCA-A', 'Tuesday', 2, 2, '9:40 AM - 10:30 AM', 'OS', 'Operating Systems & Lab', 'Ms. M. Tamilmani, AP/CA', '408'),
+  ('I-MCA-A-Tue-P3', 'I-MCA-A', 'Tuesday', 2, 3, '10:45 AM - 11:35 AM', 'MAT', 'Mathematical Foundation of CA', 'Dr. S. Sivaramakrishnan, Prof/Maths', '408'),
+  ('I-MCA-A-Tue-P4', 'I-MCA-A', 'Tuesday', 2, 4, '11:35 AM - 12:25 PM', 'OS', 'Operating Systems & Lab', 'Ms. M. Tamilmani, AP/CA', '408'),
+  ('I-MCA-A-Tue-P5', 'I-MCA-A', 'Tuesday', 2, 5, '1:10 PM - 2:00 PM', 'DT', 'Database Technology & Lab', 'Mrs. K. Shivashankari, AP/CA', '408'),
+  ('I-MCA-A-Tue-P6', 'I-MCA-A', 'Tuesday', 2, 6, '2:00 PM - 2:50 PM', 'OS LAB', 'Operating Systems Lab', 'Ms. M. Tamilmani, AP/CA', 'Lab 1'),
+  ('I-MCA-A-Tue-P7', 'I-MCA-A', 'Tuesday', 2, 7, '3:00 PM - 3:50 PM', 'OS LAB', 'Operating Systems Lab', 'Ms. M. Tamilmani, AP/CA', 'Lab 1'),
+  ('I-MCA-A-Tue-P8', 'I-MCA-A', 'Tuesday', 2, 8, '3:50 PM - 4:40 PM', 'OOPS', 'Object oriented Programming in C++', 'Mrs. V. Nandhini, AP/CA', '408'),
+
+  -- Wednesday
+  ('I-MCA-A-Wed-P1', 'I-MCA-A', 'Wednesday', 3, 1, '8:50 AM - 9:40 AM', 'DT', 'Database Technology & Lab', 'Mrs. K. Shivashankari, AP/CA', '408'),
+  ('I-MCA-A-Wed-P2', 'I-MCA-A', 'Wednesday', 3, 2, '9:40 AM - 10:30 AM', 'MAT', 'Mathematical Foundation of CA', 'Dr. S. Sivaramakrishnan, Prof/Maths', '408'),
+  ('I-MCA-A-Wed-P3', 'I-MCA-A', 'Wednesday', 3, 3, '10:45 AM - 11:35 AM', 'OOPS LAB', 'OOPS in C++ Lab', 'Mrs. V. Nandhini, AP/CA', 'Lab 2'),
+  ('I-MCA-A-Wed-P4', 'I-MCA-A', 'Wednesday', 3, 4, '11:35 AM - 12:25 PM', 'OOPS LAB', 'OOPS in C++ Lab', 'Mrs. V. Nandhini, AP/CA', 'Lab 2'),
+  ('I-MCA-A-Wed-P5', 'I-MCA-A', 'Wednesday', 3, 5, '1:10 PM - 2:00 PM', 'DT', 'Database Technology & Lab', 'Mrs. K. Shivashankari, AP/CA', '408'),
+  ('I-MCA-A-Wed-P6', 'I-MCA-A', 'Wednesday', 3, 6, '2:00 PM - 2:50 PM', 'OS', 'Operating Systems & Lab', 'Ms. M. Tamilmani, AP/CA', '408'),
+  ('I-MCA-A-Wed-P7', 'I-MCA-A', 'Wednesday', 3, 7, '3:00 PM - 3:50 PM', 'DT', 'Database Technology & Lab', 'Mrs. K. Shivashankari, AP/CA', '408'),
+  ('I-MCA-A-Wed-P8', 'I-MCA-A', 'Wednesday', 3, 8, '3:50 PM - 4:40 PM', 'SE', 'Software Engineering', 'Ms. V. Deepa, AP/CA', '408'),
+
+  -- Thursday
+  ('I-MCA-A-Thu-P1', 'I-MCA-A', 'Thursday', 4, 1, '8:50 AM - 9:40 AM', 'SE', 'Software Engineering', 'Ms. V. Deepa, AP/CA', '408'),
+  ('I-MCA-A-Thu-P2', 'I-MCA-A', 'Thursday', 4, 2, '9:40 AM - 10:30 AM', 'OS LAB', 'Operating Systems Lab', 'Ms. M. Tamilmani, AP/CA', 'Lab 1'),
+  ('I-MCA-A-Thu-P3', 'I-MCA-A', 'Thursday', 4, 3, '10:45 AM - 11:35 AM', 'OS LAB', 'Operating Systems Lab', 'Ms. M. Tamilmani, AP/CA', 'Lab 1'),
+  ('I-MCA-A-Thu-P4', 'I-MCA-A', 'Thursday', 4, 4, '11:35 AM - 12:25 PM', 'MAT', 'Mathematical Foundation of CA', 'Dr. S. Sivaramakrishnan, Prof/Maths', '408'),
+  ('I-MCA-A-Thu-P5', 'I-MCA-A', 'Thursday', 4, 5, '1:10 PM - 2:00 PM', 'OOPS', 'Object oriented Programming in C++', 'Mrs. V. Nandhini, AP/CA', '408'),
+  ('I-MCA-A-Thu-P6', 'I-MCA-A', 'Thursday', 4, 6, '2:00 PM - 2:50 PM', 'DT', 'Database Technology & Lab', 'Mrs. K. Shivashankari, AP/CA', '408'),
+  ('I-MCA-A-Thu-P7', 'I-MCA-A', 'Thursday', 4, 7, '3:00 PM - 3:50 PM', 'SE', 'Software Engineering', 'Ms. V. Deepa, AP/CA', '408'),
+  ('I-MCA-A-Thu-P8', 'I-MCA-A', 'Thursday', 4, 8, '3:50 PM - 4:40 PM', 'OS', 'Operating Systems & Lab', 'Ms. M. Tamilmani, AP/CA', '408'),
+
+  -- Friday
+  ('I-MCA-A-Fri-P1', 'I-MCA-A', 'Friday', 5, 1, '8:50 AM - 9:40 AM', 'MAT', 'Mathematical Foundation of CA', 'Dr. S. Sivaramakrishnan, Prof/Maths', '408'),
+  ('I-MCA-A-Fri-P2', 'I-MCA-A', 'Friday', 5, 2, '9:40 AM - 10:30 AM', 'OOPS', 'Object oriented Programming in C++', 'Mrs. V. Nandhini, AP/CA', '408'),
+  ('I-MCA-A-Fri-P3', 'I-MCA-A', 'Friday', 5, 3, '10:45 AM - 11:35 AM', 'SE', 'Software Engineering', 'Ms. V. Deepa, AP/CA', '408'),
+  ('I-MCA-A-Fri-P4', 'I-MCA-A', 'Friday', 5, 4, '11:35 AM - 12:25 PM', 'MAT', 'Mathematical Foundation of CA', 'Dr. S. Sivaramakrishnan, Prof/Maths', '408'),
+  ('I-MCA-A-Fri-P5', 'I-MCA-A', 'Friday', 5, 5, '1:10 PM - 2:00 PM', 'DT LAB', 'Database Technology Lab', 'Mrs. K. Shivashankari, AP/CA', 'Lab 2'),
+  ('I-MCA-A-Fri-P6', 'I-MCA-A', 'Friday', 5, 6, '2:00 PM - 2:50 PM', 'DT LAB', 'Database Technology Lab', 'Mrs. K. Shivashankari, AP/CA', 'Lab 2'),
+  ('I-MCA-A-Fri-P7', 'I-MCA-A', 'Friday', 5, 7, '3:00 PM - 3:50 PM', 'OS', 'Operating Systems & Lab', 'Ms. M. Tamilmani, AP/CA', '408'),
+  ('I-MCA-A-Fri-P8', 'I-MCA-A', 'Friday', 5, 8, '3:50 PM - 4:40 PM', 'DT', 'Database Technology & Lab', 'Mrs. K. Shivashankari, AP/CA', '408'),
+
+  -- Saturday (Period 2 is explicitly LIB / Library Hour)
+  ('I-MCA-A-Sat-P1', 'I-MCA-A', 'Saturday', 6, 1, '8:50 AM - 9:40 AM', 'OOPS', 'Object oriented Programming in C++', 'Mrs. V. Nandhini, AP/CA', '408'),
+  ('I-MCA-A-Sat-P2', 'I-MCA-A', 'Saturday', 6, 2, '9:40 AM - 10:30 AM', 'LIB', 'Library / Self-Study Hour', 'Central Library / MVIT', 'Central Library'),
+  ('I-MCA-A-Sat-P3', 'I-MCA-A', 'Saturday', 6, 3, '10:45 AM - 11:35 AM', 'OOPS LAB', 'OOPS in C++ Lab', 'Mrs. V. Nandhini, AP/CA', 'Lab 2'),
+  ('I-MCA-A-Sat-P4', 'I-MCA-A', 'Saturday', 6, 4, '11:35 AM - 12:25 PM', 'OOPS LAB', 'OOPS in C++ Lab', 'Mrs. V. Nandhini, AP/CA', 'Lab 2'),
+  ('I-MCA-A-Sat-P5', 'I-MCA-A', 'Saturday', 6, 5, '1:10 PM - 2:00 PM', 'MAT', 'Mathematical Foundation of CA', 'Dr. S. Sivaramakrishnan, Prof/Maths', '408'),
+  ('I-MCA-A-Sat-P6', 'I-MCA-A', 'Saturday', 6, 6, '2:00 PM - 2:50 PM', 'OS', 'Operating Systems & Lab', 'Ms. M. Tamilmani, AP/CA', '408'),
+  ('I-MCA-A-Sat-P7', 'I-MCA-A', 'Saturday', 6, 7, '3:00 PM - 3:50 PM', 'SE', 'Software Engineering', 'Ms. V. Deepa, AP/CA', '408'),
+  ('I-MCA-A-Sat-P8', 'I-MCA-A', 'Saturday', 6, 8, '3:50 PM - 4:40 PM', 'DT', 'Database Technology & Lab', 'Mrs. K. Shivashankari, AP/CA', '408')
+ON CONFLICT (id) DO UPDATE SET
+  day = EXCLUDED.day,
+  day_order = EXCLUDED.day_order,
+  period_no = EXCLUDED.period_no,
+  period_time = EXCLUDED.period_time,
+  subject_abb = EXCLUDED.subject_abb,
+  subject_name = EXCLUDED.subject_name,
+  faculty_name = EXCLUDED.faculty_name,
+  hall_no = EXCLUDED.hall_no;
+

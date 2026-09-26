@@ -753,6 +753,51 @@ const db = {
 
 
     return { valid: false, error: 'Invalid verification passcode for this role' };
+  },
+
+  getTimetable: async (classId = 'I-MCA-A') => {
+    try {
+      const { data, error } = await supabase
+        .from('timetable')
+        .select('*')
+        .eq('class_id', classId)
+        .order('day_order', { ascending: true })
+        .order('period_no', { ascending: true });
+      if (!error && data && data.length > 0) {
+        return data;
+      }
+    } catch (_) {}
+    return [
+      { day: 'Monday', dayOrder: 1, periods: ['OS', 'MAT', 'OOPS', 'MAT', 'OOPS', 'SE', 'DT LAB', 'DT LAB'] },
+      { day: 'Tuesday', dayOrder: 2, periods: ['OOPS', 'OS', 'MAT', 'OS', 'DT', 'OS LAB', 'OS LAB', 'OOPS'] },
+      { day: 'Wednesday', dayOrder: 3, periods: ['DT', 'MAT', 'OOPS LAB', 'OOPS LAB', 'DT', 'OS', 'DT', 'SE'] },
+      { day: 'Thursday', dayOrder: 4, periods: ['SE', 'OS LAB', 'OS LAB', 'MAT', 'OOPS', 'DT', 'SE', 'OS'] },
+      { day: 'Friday', dayOrder: 5, periods: ['MAT', 'OOPS', 'SE', 'MAT', 'DT LAB', 'DT LAB', 'OS', 'DT'] },
+      { day: 'Saturday', dayOrder: 6, periods: ['OOPS', 'LIB', 'OOPS LAB', 'OOPS LAB', 'MAT', 'OS', 'SE', 'DT'] }
+    ];
+  },
+
+  getTimetableForDay: async (classId = 'I-MCA-A', day = 'Saturday') => {
+    try {
+      const { data, error } = await supabase
+        .from('timetable')
+        .select('*')
+        .eq('class_id', classId)
+        .ilike('day', day)
+        .order('period_no', { ascending: true });
+      if (!error && data && data.length > 0) {
+        return data;
+      }
+    } catch (_) {}
+    const defaultTable = [
+      { day: 'Monday', dayOrder: 1, periods: ['OS', 'MAT', 'OOPS', 'MAT', 'OOPS', 'SE', 'DT LAB', 'DT LAB'] },
+      { day: 'Tuesday', dayOrder: 2, periods: ['OOPS', 'OS', 'MAT', 'OS', 'DT', 'OS LAB', 'OS LAB', 'OOPS'] },
+      { day: 'Wednesday', dayOrder: 3, periods: ['DT', 'MAT', 'OOPS LAB', 'OOPS LAB', 'DT', 'OS', 'DT', 'SE'] },
+      { day: 'Thursday', dayOrder: 4, periods: ['SE', 'OS LAB', 'OS LAB', 'MAT', 'OOPS', 'DT', 'SE', 'OS'] },
+      { day: 'Friday', dayOrder: 5, periods: ['MAT', 'OOPS', 'SE', 'MAT', 'DT LAB', 'DT LAB', 'OS', 'DT'] },
+      { day: 'Saturday', dayOrder: 6, periods: ['OOPS', 'LIB', 'OOPS LAB', 'OOPS LAB', 'MAT', 'OS', 'SE', 'DT'] }
+    ];
+    return defaultTable.find(t => t.day.toLowerCase() === day.toLowerCase()) || null;
   }
 };
 
