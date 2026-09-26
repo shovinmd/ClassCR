@@ -1,7 +1,8 @@
 import '../models/models.dart';
 
-/// Preloaded list of 53 students of I MCA Batch 2026–2028
+/// Preloaded list of 52 students of I MCA Batch 2026–2028
 /// Extracted from MCA Batch 2026-2028 Student List-2.pdf
+/// (Priyanka A removed, Jayaraj R at 38, Deepak Raja removed)
 const List<Student> kInitialMcaStudents = [
   Student(rollNo: 1, enrollmentNo: "260192", name: "AASIM S", dob: "21/09/2004", gender: "M", ccrCode: "CCR-0001"),
   Student(rollNo: 2, enrollmentNo: "260008", name: "ABDUL MALIK A", gender: "M", ccrCode: "CCR-0002"),
@@ -21,13 +22,13 @@ const List<Student> kInitialMcaStudents = [
   Student(rollNo: 16, enrollmentNo: "260323", name: "HARIPRASATH G", gender: "M", ccrCode: "CCR-0016"),
   Student(rollNo: 17, enrollmentNo: "260052", name: "HARISH KUMAR V", gender: "M", ccrCode: "CCR-0017"),
   Student(rollNo: 18, enrollmentNo: "260222", name: "HEMNATH V", gender: "M", ccrCode: "CCR-0018"),
-  Student(rollNo: 19, enrollmentNo: "260457", name: "JAYARAJ R", gender: "M", ccrCode: "CCR-0019"),
-  Student(rollNo: 20, enrollmentNo: "260168", name: "KARTHIGA S", gender: "F", ccrCode: "CCR-0020"),
-  Student(rollNo: 21, enrollmentNo: "260169", name: "KAYALVIZHI R", gender: "F", ccrCode: "CCR-0021"),
-  Student(rollNo: 22, enrollmentNo: "260357", name: "KEERTHIGA K", gender: "F", ccrCode: "CCR-0022"),
-  Student(rollNo: 23, enrollmentNo: "260312", name: "KEERTHIVASAN A", gender: "M", ccrCode: "CCR-0023"),
-  Student(rollNo: 24, enrollmentNo: "260211", name: "KISHORI R", gender: "F", ccrCode: "CCR-0024"),
-  Student(rollNo: 25, enrollmentNo: "260364", name: "LOKESH V", gender: "M", ccrCode: "CCR-0025"),
+  Student(rollNo: 19, enrollmentNo: "260168", name: "KARTHIGA S", gender: "F", ccrCode: "CCR-0019"),
+  Student(rollNo: 20, enrollmentNo: "260169", name: "KAYALVIZHI R", gender: "F", ccrCode: "CCR-0020"),
+  Student(rollNo: 21, enrollmentNo: "260357", name: "KEERTHIGA K", gender: "F", ccrCode: "CCR-0021"),
+  Student(rollNo: 22, enrollmentNo: "260312", name: "KEERTHIVASAN A", gender: "M", ccrCode: "CCR-0022"),
+  Student(rollNo: 23, enrollmentNo: "260211", name: "KISHORI R", gender: "F", ccrCode: "CCR-0023"),
+  Student(rollNo: 24, enrollmentNo: "260364", name: "LOKESH V", gender: "M", ccrCode: "CCR-0024"),
+  Student(rollNo: 25, enrollmentNo: "260435", name: "LOKESHWARAN R", gender: "M", ccrCode: "CCR-0025"),
   Student(rollNo: 26, enrollmentNo: "260989", name: "MAGESH R", gender: "M", ccrCode: "CCR-0026"),
   Student(rollNo: 27, enrollmentNo: "260367", name: "MAHESH KUMAR R", gender: "M", ccrCode: "CCR-0027"),
   Student(rollNo: 28, enrollmentNo: "260345", name: "MANIKANDAN D", gender: "M", ccrCode: "CCR-0028"),
@@ -40,7 +41,7 @@ const List<Student> kInitialMcaStudents = [
   Student(rollNo: 35, enrollmentNo: "260163", name: "NOORA A", gender: "F", ccrCode: "CCR-0035"),
   Student(rollNo: 36, enrollmentNo: "260663", name: "PRATHEESWARAN K", gender: "M", ccrCode: "CCR-0036"),
   Student(rollNo: 37, enrollmentNo: "260405", name: "PRITHEEVIRAJ S", gender: "M", ccrCode: "CCR-0037"),
-  Student(rollNo: 38, enrollmentNo: "260280", name: "PRIYANKA A", gender: "F", ccrCode: "CCR-0038"),
+  Student(rollNo: 38, enrollmentNo: "260457", name: "JAYARAJ R", gender: "M", ccrCode: "CCR-0038"),
   Student(rollNo: 39, enrollmentNo: "260478", name: "RAKESH P", gender: "M", ccrCode: "CCR-0039"),
   Student(rollNo: 40, enrollmentNo: "260742", name: "RUTHRAN M", gender: "M", ccrCode: "CCR-0040"),
   Student(rollNo: 41, enrollmentNo: "260338", name: "SAHANA S", gender: "F", ccrCode: "CCR-0041"),
@@ -55,7 +56,4 @@ const List<Student> kInitialMcaStudents = [
   Student(rollNo: 50, enrollmentNo: "260304", name: "SUSHMITHA S", gender: "F", ccrCode: "CCR-0050"),
   Student(rollNo: 51, enrollmentNo: "260216", name: "SWETHA P", gender: "F", ccrCode: "CCR-0051"),
   Student(rollNo: 52, enrollmentNo: "260738", name: "TASFIYA FARVIN S", gender: "F", ccrCode: "CCR-0052"),
-  Student(rollNo: 53, enrollmentNo: "Pending", name: "DEEPAK RAJA S", gender: "M", ccrCode: "CCR-0053"),
 ];
-
-

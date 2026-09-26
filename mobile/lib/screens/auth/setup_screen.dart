@@ -767,7 +767,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       ],
 
                       const Text(
-                        'Select your student profile from I MCA (53 students):',
+                        'Select your student profile from I MCA (52 students):',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 8),
@@ -986,7 +986,7 @@ class _SetupScreenState extends State<SetupScreen> {
                         Expanded(
                           child: Text(
                             _selectedRole == UserRole.student
-                                ? 'Enter your Roll Number (1–53) or CCR code (e.g. CCR-0001 to CCR-0053)'
+                                ? 'Enter your Roll Number (1–52) or CCR code (e.g. CCR-0001 to CCR-0052)'
                                 : (_selectedRole == UserRole.staff
                                     ? 'Use your assigned teacher code (e.g. OS2026, MAT2026, DT2026, SE2026) or STAFF2026'
                                     : 'Authorized code required to activate ${_getRoleTitle(_selectedRole)}'),

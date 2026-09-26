@@ -162,7 +162,7 @@ class ClassCRState extends ChangeNotifier {
       _currentUser.role == UserRole.advisor;
 
   // Set of absent roll numbers (for the currently viewed period)
-  final Set<int> _absentRolls = {};
+  final Set<int> _absentRolls = {13, 28, 31, 37, 41};
   Set<int> get absentRolls => _absentRolls;
 
   // Absent rolls for a specific period
@@ -368,6 +368,7 @@ class ClassCRState extends ChangeNotifier {
       } else {
         _currentAttendanceRecord = null;
         _absentRolls.clear();
+        _absentRolls.addAll(const [13, 28, 31, 37, 41]);
         _crNotes = 'Daily attendance session verified and submitted to advisor.';
       }
       await _saveLocalAttendanceCache();
@@ -417,6 +418,9 @@ class ClassCRState extends ChangeNotifier {
     // 3. Fresh unsubmitted date
     _currentAttendanceRecord = null;
     _absentRolls.clear();
+    if (date == _todayDate) {
+      _absentRolls.addAll(const [13, 28, 31, 37, 41]);
+    }
     _crNotes = 'Daily attendance session verified and submitted to advisor.';
   }
 
@@ -831,7 +835,7 @@ class ClassCRState extends ChangeNotifier {
         }
         return {
           'valid': false,
-          'error': 'Invalid student Roll Number (1–53) or CCR code.',
+          'error': 'Invalid student Roll Number (1–52) or CCR code.',
         };
       }
     }

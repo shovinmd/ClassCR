@@ -26,7 +26,7 @@ Extracted directly from `MCA Batch 2026-2028 Student List-2.pdf`:
 45. `260274 SHOVIN MICHEL DAVID`
 ...
 52. `260738 TASFIYA FARVIN S`
-53. `Pending DEEPAK RAJA S`
+
 
 ### 3. 💬 Smart Report Generator (WhatsApp & Advisor Export)
 Formats the official daily report with one tap:
