@@ -1,0 +1,7 @@
+mobile/
+.git/
+.kilo/
+releases/*.apk
+ClassCR.apk
+*.pdf
+server/node_modules/
