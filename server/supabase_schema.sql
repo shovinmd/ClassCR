@@ -185,7 +185,8 @@ VALUES
   (49, '260359', 'SURENDAR', NULL, 'M', 'CCR-0049', 'I-MCA-A', 'MCA'),
   (50, '260304', 'SUSHMITHA S', NULL, 'F', 'CCR-0050', 'I-MCA-A', 'MCA'),
   (51, '260216', 'SWETHA P', NULL, 'F', 'CCR-0051', 'I-MCA-A', 'MCA'),
-  (52, '260738', 'TASFIYA FARVIN S', NULL, 'F', 'CCR-0052', 'I-MCA-A', 'MCA')
+  (52, '260738', 'TASFIYA FARVIN S', NULL, 'F', 'CCR-0052', 'I-MCA-A', 'MCA'),
+  (53, 'Pending', 'DEEPAK RAJA S', NULL, 'M', 'CCR-0053', 'I-MCA-A', 'MCA')
 ON CONFLICT (roll_no) DO UPDATE SET
   enrollment_no = EXCLUDED.enrollment_no,
   name = EXCLUDED.name,

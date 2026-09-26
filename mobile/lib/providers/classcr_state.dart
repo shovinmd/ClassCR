@@ -58,6 +58,7 @@ class ClassCRState extends ChangeNotifier {
   String _todayDate = _initialDate;
   String get todayDate => _todayDate;
   String get formattedTodayDate => _formatDateForReport(_todayDate);
+  String get todayDayName => _getDayNameForReport(_todayDate);
 
   // Per-period attendance records for today — key = periodNo (1–8)
   Map<int, AttendanceRecord> _periodRecords = {};
@@ -830,7 +831,7 @@ class ClassCRState extends ChangeNotifier {
         }
         return {
           'valid': false,
-          'error': 'Invalid student Roll Number (1–52) or CCR code.',
+          'error': 'Invalid student Roll Number (1–53) or CCR code.',
         };
       }
     }
@@ -1584,9 +1585,13 @@ class ClassCRState extends ChangeNotifier {
 
     // Clean Names-Only Format for fast WhatsApp posting (requested by user)
     if (namesOnly) {
-      buffer.writeln("Absent Students (I MCA A - ${_formatDateForReport(_todayDate)}):");
-      buffer.writeln("Total Absent: $pAbsent / $pTotal");
-      buffer.writeln();
+      final dateFormatted = _formatDateForReport(_todayDate);
+      final dayName = _getDayNameForReport(_todayDate);
+
+      buffer.writeln("I MCA A — MVIT");
+      buffer.writeln("Date: $dateFormatted/");
+      buffer.writeln(dayName);
+      buffer.writeln("Absentees Name list");
       if (sortedAbsentees.isEmpty) {
         buffer.writeln("None! 100% Attendance 🎉");
       } else {
@@ -1596,7 +1601,7 @@ class ClassCRState extends ChangeNotifier {
             (s) => s.rollNo == rNo,
             orElse: () => Student(rollNo: rNo, enrollmentNo: 'N/A', name: 'Student $rNo'),
           );
-          buffer.writeln("$i. ${st.name}");
+          buffer.writeln("$i.${st.name}");
           i++;
         }
       }
@@ -1664,6 +1669,19 @@ class ClassCRState extends ChangeNotifier {
       }
     } catch (_) {}
     return yyyyMmDd;
+  }
+
+  String _getDayNameForReport(String yyyyMmDd) {
+    try {
+      final parts = yyyyMmDd.split('-');
+      if (parts.length == 3) {
+        final dt = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        return days[dt.weekday - 1];
+      }
+    } catch (_) {}
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return days[DateTime.now().weekday - 1];
   }
 
   /// Returns current wall-clock time as a formatted string, e.g. "09:18 AM"

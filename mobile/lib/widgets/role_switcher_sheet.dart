@@ -189,7 +189,7 @@ class RoleSwitcherSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Enter your Roll Number (1–52) or CCR Code:',
+                    'Enter your Roll Number (1–53) or CCR Code:',
                     style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 10),

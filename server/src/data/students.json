@@ -50,5 +50,6 @@
   { "rollNo": 49, "enrollmentNo": "260359", "name": "SURENDAR", "gender": "M", "ccrCode": "CCR-0049", "classId": "I-MCA-A", "department": "MCA" },
   { "rollNo": 50, "enrollmentNo": "260304", "name": "SUSHMITHA S", "gender": "F", "ccrCode": "CCR-0050", "classId": "I-MCA-A", "department": "MCA" },
   { "rollNo": 51, "enrollmentNo": "260216", "name": "SWETHA P", "gender": "F", "ccrCode": "CCR-0051", "classId": "I-MCA-A", "department": "MCA" },
-  { "rollNo": 52, "enrollmentNo": "260738", "name": "TASFIYA FARVIN S", "gender": "F", "ccrCode": "CCR-0052", "classId": "I-MCA-A", "department": "MCA" }
+  { "rollNo": 52, "enrollmentNo": "260738", "name": "TASFIYA FARVIN S", "gender": "F", "ccrCode": "CCR-0052", "classId": "I-MCA-A", "department": "MCA" },
+  { "rollNo": 53, "enrollmentNo": "Pending", "name": "DEEPAK RAJA S", "gender": "M", "ccrCode": "CCR-0053", "classId": "I-MCA-A", "department": "MCA" }
 ]

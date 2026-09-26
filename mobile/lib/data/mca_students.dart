@@ -1,6 +1,6 @@
 import '../models/models.dart';
 
-/// Preloaded list of 52 students of I MCA Batch 2026–2028
+/// Preloaded list of 53 students of I MCA Batch 2026–2028
 /// Extracted from MCA Batch 2026-2028 Student List-2.pdf
 const List<Student> kInitialMcaStudents = [
   Student(rollNo: 1, enrollmentNo: "260192", name: "AASIM S", dob: "21/09/2004", gender: "M", ccrCode: "CCR-0001"),
@@ -55,6 +55,7 @@ const List<Student> kInitialMcaStudents = [
   Student(rollNo: 50, enrollmentNo: "260304", name: "SUSHMITHA S", gender: "F", ccrCode: "CCR-0050"),
   Student(rollNo: 51, enrollmentNo: "260216", name: "SWETHA P", gender: "F", ccrCode: "CCR-0051"),
   Student(rollNo: 52, enrollmentNo: "260738", name: "TASFIYA FARVIN S", gender: "F", ccrCode: "CCR-0052"),
+  Student(rollNo: 53, enrollmentNo: "Pending", name: "DEEPAK RAJA S", gender: "M", ccrCode: "CCR-0053"),
 ];
 
 

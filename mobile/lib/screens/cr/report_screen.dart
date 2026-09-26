@@ -456,7 +456,7 @@ class _ReportScreenState extends State<ReportScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Absent Students',
+              'I MCA A — MVIT',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
             ),
             Container(
@@ -467,22 +467,26 @@ class _ReportScreenState extends State<ReportScreen> {
                 border: Border.all(color: const Color(0xFF5EEAD4)),
               ),
               child: const Text(
-                '💬 Names Only Mode',
+                '💬 WhatsApp Format',
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0F766E)),
               ),
             ),
           ],
         ),
         Text(
-          'I MCA A — ${state.formattedTodayDate}',
+          'Date: ${state.formattedTodayDate}/',
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0D9488)),
         ),
-        const SizedBox(height: 6),
         Text(
-          'Total Absent: $displayAbsent / $displayTotal',
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.absentRed),
+          state.todayDayName,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
         ),
-        const Divider(height: 24, thickness: 1),
+        const SizedBox(height: 6),
+        const Text(
+          'Absentees Name list',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.absentRed),
+        ),
+        const Divider(height: 20, thickness: 1),
         if (absentees.isEmpty)
           Container(
             padding: const EdgeInsets.all(12),
@@ -504,23 +508,14 @@ class _ReportScreenState extends State<ReportScreen> {
               orElse: () => Student(rollNo: rNo, enrollmentNo: 'N/A', name: 'Student $rNo'),
             );
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '$idx',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                    ),
+                  Text(
+                    '$idx.',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       st.name,
