@@ -123,7 +123,7 @@ INSERT INTO public.classes (
   student_code
 )
 VALUES (
-  'I-MCA-A', 'I MCA A', '2026–2028', 'MCA', 46,
+  'I-MCA-A', 'I MCA A', '2026–2028', 'MCA', 47,
   'Mrs. V. Nandhini, AP/CA', 'ADV2026',
   45, 'SHOVIN MICHEL DAVID', 'CR2026',
   NULL, NULL, NULL,
@@ -131,7 +131,7 @@ VALUES (
   'STU2026'
 );
 
--- 7. SEED OFFICIAL 46 MCA STUDENTS ROSTER
+-- 7. SEED OFFICIAL 47 MCA STUDENTS ROSTER
 INSERT INTO public.students (roll_no, enrollment_no, name, dob, gender, ccr_code, class_id, department)
 VALUES
   (1, '260192', 'AASIM S', '21/09/2004', 'M', 'CCR-0001', 'I-MCA-A', 'MCA'),
@@ -166,6 +166,7 @@ VALUES
   (34, '260333', 'NETHAJI V', NULL, 'M', 'CCR-0034', 'I-MCA-A', 'MCA'),
   (35, '260163', 'NOORA A', NULL, 'F', 'CCR-0035', 'I-MCA-A', 'MCA'),
   (36, '260663', 'PRATHEESWARAN K', NULL, 'M', 'CCR-0036', 'I-MCA-A', 'MCA'),
+  (37, '260280', 'PRIYANKA A', NULL, 'F', 'CCR-0037', 'I-MCA-A', 'MCA'),
   (38, '260457', 'JAYARAJ R', NULL, 'M', 'CCR-0038', 'I-MCA-A', 'MCA'),
   (39, '260478', 'RAKESH P', NULL, 'M', 'CCR-0039', 'I-MCA-A', 'MCA'),
   (40, '260742', 'RUTHRAN M', NULL, 'M', 'CCR-0040', 'I-MCA-A', 'MCA'),

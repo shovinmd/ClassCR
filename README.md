@@ -15,7 +15,7 @@ ClassCR is a college attendance and Class Representative (CR) management platfor
 - **Verification Bottom Sheet**: Summarizes absentees list for instant verification before submission.
 - **CR Daily Notes**: Add remarks (e.g. lab sessions, campus drive, prior leaves).
 
-### 2. 📄 46 Preloaded Students (I MCA Batch 2026–2028)
+### 2. 📄 47 Preloaded Students (I MCA Batch 2026–2028)
 Extracted directly from `MCA Batch 2026-2028 Student List-2.pdf`:
 1. `260192 AASIM.S`
 2. `260008 ABDUL MALIK A`

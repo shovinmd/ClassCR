@@ -45,7 +45,7 @@ class ClassCRState extends ChangeNotifier {
   AppUser get currentUser => _currentUser;
   UserRole get currentRole => _currentUser.role;
 
-  // Students list (46 items)
+  // Students list (47 items)
   List<Student> _students = List.from(kInitialMcaStudents);
   List<Student> get students => _students;
 

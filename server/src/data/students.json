@@ -320,6 +320,16 @@
     "department": "MCA"
   },
   {
+    "rollNo": 37,
+    "enrollmentNo": "260280",
+    "name": "PRIYANKA A",
+    "dob": null,
+    "gender": "F",
+    "ccrCode": "CCR-0037",
+    "classId": "I-MCA-A",
+    "department": "MCA"
+  },
+  {
     "rollNo": 38,
     "enrollmentNo": "260457",
     "name": "JAYARAJ R",
