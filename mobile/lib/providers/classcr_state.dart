@@ -34,18 +34,18 @@ class ClassCRState extends ChangeNotifier {
   // Active User State
   AppUser _currentUser = const AppUser(
     id: 'user_cr_1',
-    name: 'MUTHUVEL R (CR)',
+    name: 'SHOVIN MICHEL DAVID (CR)',
     email: 'cr@classcr.edu',
     role: UserRole.cr,
     classId: 'I-MCA-A',
-    studentId: '260320',
+    studentId: '260274',
     department: 'MCA',
   );
 
   AppUser get currentUser => _currentUser;
   UserRole get currentRole => _currentUser.role;
 
-  // Students list (52 items)
+  // Students list (47 items)
   List<Student> _students = List.from(kInitialMcaStudents);
   List<Student> get students => _students;
 
@@ -162,7 +162,7 @@ class ClassCRState extends ChangeNotifier {
       _currentUser.role == UserRole.advisor;
 
   // Set of absent roll numbers (for the currently viewed period)
-  final Set<int> _absentRolls = {13, 28, 31, 37, 41};
+  final Set<int> _absentRolls = {};
   Set<int> get absentRolls => _absentRolls;
 
   // Absent rolls for a specific period
@@ -368,7 +368,6 @@ class ClassCRState extends ChangeNotifier {
       } else {
         _currentAttendanceRecord = null;
         _absentRolls.clear();
-        _absentRolls.addAll(const [13, 28, 31, 37, 41]);
         _crNotes = 'Daily attendance session verified and submitted to advisor.';
       }
       await _saveLocalAttendanceCache();
@@ -418,9 +417,6 @@ class ClassCRState extends ChangeNotifier {
     // 3. Fresh unsubmitted date
     _currentAttendanceRecord = null;
     _absentRolls.clear();
-    if (date == _todayDate) {
-      _absentRolls.addAll(const [13, 28, 31, 37, 41]);
-    }
     _crNotes = 'Daily attendance session verified and submitted to advisor.';
   }
 
@@ -1798,7 +1794,7 @@ class ClassCRState extends ChangeNotifier {
     }
 
     buffer.writeln();
-    buffer.writeln('"Total Students: 52","Total Sessions Held: $totalConducted","Report Generated On: ${_nowTimeStr()}, $formattedTodayDate"');
+    buffer.writeln('"Total Students: ${_students.length}","Total Sessions Held: $totalConducted","Report Generated On: ${_nowTimeStr()}, $formattedTodayDate"');
     buffer.writeln('"Class Representative (CR)","Assistant CR","Subject In-Charge","Class Advisor","Head of Department (HOD)"');
 
     return buffer.toString();
@@ -1857,7 +1853,7 @@ class ClassCRState extends ChangeNotifier {
     }
 
     buffer.writeln("================================================================================");
-    buffer.writeln("Total Students: 52       Generated: $formattedTodayDate (${_nowTimeStr()})");
+    buffer.writeln("Total Students: ${_students.length}       Generated: $formattedTodayDate (${_nowTimeStr()})");
     buffer.writeln();
     buffer.writeln("Signatures for Official Department Records:");
     buffer.writeln();

@@ -123,15 +123,15 @@ INSERT INTO public.classes (
   student_code
 )
 VALUES (
-  'I-MCA-A', 'I MCA A', '2026–2028', 'MCA', 52,
+  'I-MCA-A', 'I MCA A', '2026–2028', 'MCA', 47,
   'Mrs. V. Nandhini, AP/CA', 'ADV2026',
-  31, 'MUTHUVEL R', 'CR2026',
-  45, 'SHOVIN MICHEL DAVID', 'MACR2026',
-  13, 'DHIVYALAKSHMI H', 'FACR2026',
+  45, 'SHOVIN MICHEL DAVID', 'CR2026',
+  NULL, NULL, NULL,
+  6, 'AFROZUNNISA A', 'FACR2026',
   'STU2026'
 );
 
--- 7. SEED OFFICIAL 52 MCA STUDENTS ROSTER
+-- 7. SEED OFFICIAL 47 MCA STUDENTS ROSTER
 INSERT INTO public.students (roll_no, enrollment_no, name, dob, gender, ccr_code, class_id, department)
 VALUES
   (1, '260192', 'AASIM S', '21/09/2004', 'M', 'CCR-0001', 'I-MCA-A', 'MCA'),
@@ -146,7 +146,6 @@ VALUES
   (10, '260203', 'ARUSELVI A', NULL, 'F', 'CCR-0010', 'I-MCA-A', 'MCA'),
   (11, '260403', 'DHARSHINI T', NULL, 'F', 'CCR-0011', 'I-MCA-A', 'MCA'),
   (12, '260350', 'DHIVYA S', NULL, 'F', 'CCR-0012', 'I-MCA-A', 'MCA'),
-  (13, '260311', 'DHIVYALAKSHMI H', NULL, 'F', 'CCR-0013', 'I-MCA-A', 'MCA'),
   (14, '260226', 'ESHWARAN N', NULL, 'M', 'CCR-0014', 'I-MCA-A', 'MCA'),
   (15, '260300', 'HARINI S', NULL, 'F', 'CCR-0015', 'I-MCA-A', 'MCA'),
   (16, '260323', 'HARIPRASATH G', NULL, 'M', 'CCR-0016', 'I-MCA-A', 'MCA'),
@@ -161,20 +160,16 @@ VALUES
   (25, '260435', 'LOKESHWARAN R', NULL, 'M', 'CCR-0025', 'I-MCA-A', 'MCA'),
   (26, '260989', 'MAGESH R', NULL, 'M', 'CCR-0026', 'I-MCA-A', 'MCA'),
   (27, '260367', 'MAHESH KUMAR R', NULL, 'M', 'CCR-0027', 'I-MCA-A', 'MCA'),
-  (28, '260345', 'MANIKANDAN D', NULL, 'M', 'CCR-0028', 'I-MCA-A', 'MCA'),
   (29, '260356', 'MANISHA P', NULL, 'F', 'CCR-0029', 'I-MCA-A', 'MCA'),
   (30, '260390', 'MOHAMED NIYAS M', NULL, 'M', 'CCR-0030', 'I-MCA-A', 'MCA'),
-  (31, '260320', 'MUTHUVEL R', NULL, 'M', 'CCR-0031', 'I-MCA-A', 'MCA'),
   (32, '260355', 'NANDHINI G', NULL, 'F', 'CCR-0032', 'I-MCA-A', 'MCA'),
   (33, '260107', 'NASREEN M', NULL, 'F', 'CCR-0033', 'I-MCA-A', 'MCA'),
   (34, '260333', 'NETHAJI V', NULL, 'M', 'CCR-0034', 'I-MCA-A', 'MCA'),
   (35, '260163', 'NOORA A', NULL, 'F', 'CCR-0035', 'I-MCA-A', 'MCA'),
   (36, '260663', 'PRATHEESWARAN K', NULL, 'M', 'CCR-0036', 'I-MCA-A', 'MCA'),
-  (37, '260405', 'PRITHEEVIRAJ S', NULL, 'M', 'CCR-0037', 'I-MCA-A', 'MCA'),
   (38, '260457', 'JAYARAJ R', NULL, 'M', 'CCR-0038', 'I-MCA-A', 'MCA'),
   (39, '260478', 'RAKESH P', NULL, 'M', 'CCR-0039', 'I-MCA-A', 'MCA'),
   (40, '260742', 'RUTHRAN M', NULL, 'M', 'CCR-0040', 'I-MCA-A', 'MCA'),
-  (41, '260338', 'SAHANA S', NULL, 'F', 'CCR-0041', 'I-MCA-A', 'MCA'),
   (42, '260319', 'SAKTHIVEL R', NULL, 'M', 'CCR-0042', 'I-MCA-A', 'MCA'),
   (43, 'Pending', 'SANJAY VIGNESHWARAN J', NULL, 'M', 'CCR-0043', 'I-MCA-A', 'MCA'),
   (44, '260368', 'SATHYA P', NULL, 'M', 'CCR-0044', 'I-MCA-A', 'MCA'),

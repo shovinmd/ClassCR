@@ -415,7 +415,7 @@ class _MonthlyRegisterScreenState extends State<MonthlyRegisterScreen> {
                         child: _buildMetricTile(
                           'Class Avg',
                           '${avgAttendance.toStringAsFixed(1)}%',
-                          '52 Students',
+                          '${widget.state.students.length} Students',
                           Icons.insights,
                           AppColors.presentGreen,
                         ),
