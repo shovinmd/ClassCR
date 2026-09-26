@@ -1,8 +1,8 @@
 import '../models/models.dart';
 
-/// Preloaded list of 47 students of I MCA Batch 2026–2028
+/// Preloaded list of 46 students of I MCA Batch 2026–2028
 /// Extracted from MCA Batch 2026-2028 Student List-2.pdf
-/// (5 removed students: Dhivyalakshmi, Manikandan, Muthuvel, Pritheeviraj, Sahana)
+/// (6 removed students: Dhivyalakshmi, Manikandan, Muthuvel, Pritheeviraj, Sahana, Lokeshwaran)
 const List<Student> kInitialMcaStudents = [
   Student(rollNo: 1, enrollmentNo: "260192", name: "AASIM S", dob: "21/09/2004", gender: "M", ccrCode: "CCR-0001"),
   Student(rollNo: 2, enrollmentNo: "260008", name: "ABDUL MALIK A", gender: "M", ccrCode: "CCR-0002"),
@@ -27,7 +27,6 @@ const List<Student> kInitialMcaStudents = [
   Student(rollNo: 22, enrollmentNo: "260312", name: "KEERTHIVASAN A", gender: "M", ccrCode: "CCR-0022"),
   Student(rollNo: 23, enrollmentNo: "260211", name: "KISHORI R", gender: "F", ccrCode: "CCR-0023"),
   Student(rollNo: 24, enrollmentNo: "260364", name: "LOKESH V", gender: "M", ccrCode: "CCR-0024"),
-  Student(rollNo: 25, enrollmentNo: "260435", name: "LOKESHWARAN R", gender: "M", ccrCode: "CCR-0025"),
   Student(rollNo: 26, enrollmentNo: "260989", name: "MAGESH R", gender: "M", ccrCode: "CCR-0026"),
   Student(rollNo: 27, enrollmentNo: "260367", name: "MAHESH KUMAR R", gender: "M", ccrCode: "CCR-0027"),
   Student(rollNo: 29, enrollmentNo: "260356", name: "MANISHA P", gender: "F", ccrCode: "CCR-0029"),
